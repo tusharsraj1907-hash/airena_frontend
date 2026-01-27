@@ -570,10 +570,9 @@ function EditHackathonModal({ hackathon, isOpen, onClose, onSuccess }: { hackath
         <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
           <h2 className="text-2xl font-bold text-white">Edit Hackathon</h2>
           <Button 
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold" 
+            className="text-white hover:bg-slate-800" 
             size="sm" 
             onClick={onClose} 
-            className="text-white hover:bg-slate-800"
             type="button"
           >
             <X className="w-5 h-5" />
@@ -854,10 +853,9 @@ function EditHackathonModal({ hackathon, isOpen, onClose, onSuccess }: { hackath
                     />
                     <Button
                       type="button"
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                      className="mt-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full"
                       size="sm"
                       onClick={() => setFormData({ ...formData, bannerImageUrl: '' })}
-                      className="mt-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full"
                     >
                       Remove Banner
                     </Button>
@@ -917,10 +915,9 @@ function EditHackathonModal({ hackathon, isOpen, onClose, onSuccess }: { hackath
                     />
                     <Button
                       type="button"
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                      className="mt-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full"
                       size="sm"
                       onClick={() => setFormData({ ...formData, logoImageUrl: '' })}
-                      className="mt-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full"
                     >
                       Remove Logo
                     </Button>
@@ -999,7 +996,6 @@ function EditHackathonModal({ hackathon, isOpen, onClose, onSuccess }: { hackath
             </Button>
             <Button
               type="button"
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
               className="border-2 border-slate-600 hover:bg-slate-800 text-white"
               onClick={onClose}
               disabled={loading}

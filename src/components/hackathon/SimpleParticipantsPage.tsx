@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Loader2, CheckCircle2, Clock, ChevronDown, Mail, User, UserCheck } from 'lucide-react';
+import { Users, Loader2, CheckCircle2, Clock, ChevronDown, Mail, User, UserCheck, Eye, Download, FileText } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { api } from '../../utils/api';
 import { toast } from 'sonner';
+import { SubmissionDetailsModal } from './SubmissionDetailsModal';
 
 interface SimpleParticipantsPageProps {
   userData: any;
@@ -16,6 +18,8 @@ export function SimpleParticipantsPage({ userData }: SimpleParticipantsPageProps
   const [hackathons, setHackathons] = useState<any[]>([]);
   const [selectedHackathonId, setSelectedHackathonId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -270,12 +274,27 @@ export function SimpleParticipantsPage({ userData }: SimpleParticipantsPageProps
                                     </div>
                                   </div>
                                 </div>
-                                {member.hasSubmission && (
-                                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    Submitted
-                                  </Badge>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {member.hasSubmission && (
+                                    <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      Submitted
+                                    </Badge>
+                                  )}
+                                  {member.hasSubmission && member.submissionId && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                                      onClick={() => {
+                                        setSelectedSubmissionId(member.submissionId);
+                                        setIsDetailsModalOpen(true);
+                                      }}
+                                    >
+                                      <Eye className="w-3 h-3 mr-1" />
+                                      View Details
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -318,25 +337,40 @@ export function SimpleParticipantsPage({ userData }: SimpleParticipantsPageProps
                                 Registered: {new Date(participant.registeredAt).toLocaleDateString()}
                               </p>
                             </div>
-                            <Badge 
-                              className={
-                                participant.hasSubmission 
-                                  ? 'bg-green-500/20 text-green-400 border-green-500/50' 
-                                  : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                              }
-                            >
-                              {participant.hasSubmission ? (
-                                <>
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  Submitted
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Registered
-                                </>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                className={
+                                  participant.hasSubmission 
+                                    ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                                    : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                                }
+                              >
+                                {participant.hasSubmission ? (
+                                  <>
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Submitted
+                                  </>
+                                ) : (
+                                  <>
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Registered
+                                  </>
+                                )}
+                              </Badge>
+                              {participant.hasSubmission && participant.submissionId && (
+                                <Button
+                                  size="sm"
+                                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                                  onClick={() => {
+                                    setSelectedSubmissionId(participant.submissionId);
+                                    setIsDetailsModalOpen(true);
+                                  }}
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View Details
+                                </Button>
                               )}
-                            </Badge>
+                            </div>
                           </div>
                         </div>
                       </Card>
@@ -347,6 +381,18 @@ export function SimpleParticipantsPage({ userData }: SimpleParticipantsPageProps
             </div>
           )}
         </>
+      )}
+
+      {/* Submission Details Modal */}
+      {selectedSubmissionId && (
+        <SubmissionDetailsModal
+          submissionId={selectedSubmissionId}
+          isOpen={isDetailsModalOpen}
+          onClose={() => {
+            setIsDetailsModalOpen(false);
+            setSelectedSubmissionId(null);
+          }}
+        />
       )}
     </motion.div>
   );

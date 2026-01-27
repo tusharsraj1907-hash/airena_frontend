@@ -373,6 +373,10 @@ export function CreateHackathonForm({ onSuccess, onCancel }: { onSuccess: () => 
         delete hackathonData.numberOfTracks;
   
         await api.createHackathon(hackathonData);
+        
+        // Trigger stats refresh after creating hackathon
+        api.triggerStatsRefresh();
+        
         toast.success('Hackathon created successfully! You can publish it from the dashboard.');
         onSuccess();
       } catch (error: any) {

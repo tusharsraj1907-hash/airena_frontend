@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -52,6 +52,7 @@ import { HackathonDetailsModal } from './HackathonDetailsModal';
 import { SubmissionDetailsModal } from './SubmissionDetailsModal';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { api } from '../../utils/api';
 import { SimpleParticipantsPage } from './SimpleParticipantsPage';
 import { CreateHackathonForm } from './OrganizerDashboard';
@@ -211,10 +212,11 @@ function ParticipantHackathons({
                 {/* Check if user has submitted */}
                 {(() => {
                   const userSubmission = registeredHackathons.find(h => h.id === hackathon.id)?.submissions?.[0];
+                  
                   // Check if submission exists and is actually submitted (not just a draft)
-                  if (userSubmission && (userSubmission.submittedAt || userSubmission.isFinal || !userSubmission.isDraft)) {
+                  if (userSubmission && (userSubmission.submittedAt || userSubmission.status === 'SUBMITTED' || userSubmission.isFinal)) {
                     return 'Edit Submission';
-                  } else if (userSubmission && userSubmission.isDraft) {
+                  } else if (userSubmission && (userSubmission.isDraft || userSubmission.status === 'DRAFT')) {
                     return 'Continue Project';
                   } else {
                     return 'Start Project';
@@ -473,9 +475,29 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [registeredHackathons, setRegisteredHackathons] = useState<Set<string>>(new Set());
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState('');
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<string>('all');
   const navigate = useNavigate();
   
   const userRole = userData?.role?.toLowerCase() || 'participant';
+
+  // Filter submissions based on search and status
+  const filteredSubmissions = useMemo(() => {
+    return submissions.filter((submission: any) => {
+      const submitter = submission.submitter || {};
+      const matchesSearch = submissionSearchQuery === '' || 
+        submission.title?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+        `${submitter.firstName || ''} ${submitter.lastName || ''}`.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+        submitter.email?.toLowerCase().includes(submissionSearchQuery.toLowerCase());
+      
+      const matchesStatus = submissionStatusFilter === 'all' || 
+        submission.status === submissionStatusFilter ||
+        (submissionStatusFilter === 'SUBMITTED' && (submission.status === 'SUBMITTED' || submission.submittedAt)) ||
+        (submissionStatusFilter === 'DRAFT' && (submission.status === 'DRAFT' || !submission.submittedAt));
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [submissions, submissionSearchQuery, submissionStatusFilter]);
 
   // Update active tab when initialTab changes (for URL navigation)
   useEffect(() => {
@@ -1074,6 +1096,10 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                                         onClick={async () => {
                                           try {
                                             await api.updateHackathonStatus(hackathon.id, 'LIVE');
+                                            
+                                            // Trigger stats refresh after publishing hackathon
+                                            api.triggerStatsRefresh();
+                                            
                                             toast.success('Hackathon published successfully!');
                                             fetchDashboardData();
                                           } catch (error: any) {
@@ -1245,6 +1271,10 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                                 // Need to register first
                                 try {
                                   await api.registerForHackathon(hackathon.id);
+                                  
+                                  // Trigger stats refresh after registration
+                                  api.triggerStatsRefresh();
+                                  
                                   toast.success(`Successfully registered for ${hackathon.title}!`);
                                   // Refresh dashboard to update registration status
                                   fetchDashboardData();
@@ -1310,12 +1340,15 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                             {isRegistered ? (
                               <>
                                 <Plus className="w-4 h-4 mr-1" />
-                                {userSubmission && (userSubmission.submittedAt || userSubmission.isFinal || !userSubmission.isDraft)
-                                  ? 'Edit Submission'
-                                  : userSubmission && userSubmission.isDraft
-                                  ? 'Continue Project' 
-                                  : 'Start Project'
-                                }
+                                {(() => {
+                                  if (userSubmission && (userSubmission.submittedAt || userSubmission.status === 'SUBMITTED' || userSubmission.isFinal)) {
+                                    return 'Edit Submission';
+                                  } else if (userSubmission && (userSubmission.isDraft || userSubmission.status === 'DRAFT')) {
+                                    return 'Continue Project';
+                                  } else {
+                                    return 'Start Project';
+                                  }
+                                })()}
                               </>
                             ) : (
                               <>
@@ -1565,21 +1598,6 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
               />
             )}
 
-            {/* Submission Details Modal (for Judges/Organizers) */}
-            {selectedSubmissionId && (
-              <SubmissionDetailsModal
-                submissionId={selectedSubmissionId}
-                isOpen={isDetailsModalOpen}
-                onClose={() => {
-                  setIsDetailsModalOpen(false);
-                  setSelectedSubmissionId(null);
-                  setSelectedHackathonId(null);
-                }}
-              />
-            )}
-
-
-
             {/* Organizer-specific tabs */}
             {activeTab === 'create-hackathon' && userRole === 'organizer' && (
               <motion.div
@@ -1629,11 +1647,21 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                     <Input
                       placeholder="Search submissions..."
                       className="w-64 bg-slate-800/50 border-slate-600 text-white placeholder:text-white/70"
+                      value={submissionSearchQuery}
+                      onChange={(e) => setSubmissionSearchQuery(e.target.value)}
                     />
-                    <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </Button>
+                    <Select value={submissionStatusFilter} onValueChange={setSubmissionStatusFilter}>
+                      <SelectTrigger className="w-48 bg-slate-800/50 border-slate-600 text-white">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700">
+                        <SelectItem value="all" className="text-white hover:bg-slate-800">All Submissions</SelectItem>
+                        <SelectItem value="SUBMITTED" className="text-white hover:bg-slate-800">Submitted</SelectItem>
+                        <SelectItem value="DRAFT" className="text-white hover:bg-slate-800">Draft</SelectItem>
+                        <SelectItem value="APPROVED" className="text-white hover:bg-slate-800">Approved</SelectItem>
+                        <SelectItem value="REJECTED" className="text-white hover:bg-slate-800">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 {loading ? (
@@ -1647,8 +1675,13 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                         <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                         <p className="text-white">No submissions to review</p>
                       </Card>
+                    ) : filteredSubmissions.length === 0 ? (
+                      <Card className="p-8 text-center bg-slate-800/50">
+                        <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                        <p className="text-white">No submissions match your search criteria</p>
+                      </Card>
                     ) : (
-                      submissions.map((submission: any) => {
+                      filteredSubmissions.map((submission: any) => {
                         const submitter = submission.submitter || {};
                         const hackathon = hackathons.find((h: any) => h.id === submission.hackathonId);
                         const statusMap: Record<string, string> = {
@@ -1756,9 +1789,29 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
               >
                 <div className="mb-6 flex items-center justify-between">
                   <h1 className="text-3xl font-bold text-white">Review Submissions</h1>
-                  <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
-                    {submissions.length} Pending Reviews
-                  </Badge>
+                  <div className="flex gap-3">
+                    <Input
+                      placeholder="Search submissions..."
+                      className="w-64 bg-slate-800/50 border-slate-600 text-white placeholder:text-white/70"
+                      value={submissionSearchQuery}
+                      onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+                    />
+                    <Select value={submissionStatusFilter} onValueChange={setSubmissionStatusFilter}>
+                      <SelectTrigger className="w-48 bg-slate-800/50 border-slate-600 text-white">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700">
+                        <SelectItem value="all" className="text-white hover:bg-slate-800">All Submissions</SelectItem>
+                        <SelectItem value="SUBMITTED" className="text-white hover:bg-slate-800">Submitted</SelectItem>
+                        <SelectItem value="DRAFT" className="text-white hover:bg-slate-800">Draft</SelectItem>
+                        <SelectItem value="APPROVED" className="text-white hover:bg-slate-800">Approved</SelectItem>
+                        <SelectItem value="REJECTED" className="text-white hover:bg-slate-800">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
+                      {submissions.length} Pending Reviews
+                    </Badge>
+                  </div>
                 </div>
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
@@ -1772,71 +1825,98 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
                         <p className="text-white">No submissions assigned for review</p>
                       </Card>
                     ) : (
-                      submissions.map((submission: any) => {
-                        const submitter = submission.submitter || {};
-                        const hackathon = hackathons.find((h: any) => h.id === submission.hackathonId);
-                        return (
-                          <Card3D key={submission.id} intensity={15}>
-                            <Card className="p-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-sm glass shadow-3d">
-                              <div className="flex items-start justify-between mb-4">
-                                <div>
-                                  <h3 className="text-xl font-bold mb-1 text-white">{submission.title}</h3>
-                                  <div className="text-sm text-white">
-                                    <p>by {submitter.firstName || 'Unknown'} {submitter.lastName || 'User'}</p>
-                                    {submission.type === 'TEAM' && submission.teamInfo ? (
-                                      <p className="text-xs text-blue-300 mt-1">
-                                        Team: {submission.teamInfo.name} ({submission.teamInfo.members?.length || 0} members)
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-green-300 mt-1">Individual Participant</p>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-white mt-1">{hackathon?.title || 'Unknown Hackathon'}</p>
-                                </div>
-                                <Badge className={
-                                  submission.status === 'APPROVED' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
-                                  submission.status === 'REJECTED' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-                                  'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                                }>
-                                  {submission.status || 'DRAFT'}
-                                </Badge>
-                              </div>
-                              <div className="grid md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                  <p className="text-xs text-white mb-1">Submitted</p>
-                                  <p className="text-sm text-white">{submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString() : 'Not submitted'}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-white mb-1">Actions</p>
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
-                                      onClick={() => {
-                                        // Open submission details modal
-                                        setSelectedSubmissionId(submission.id);
-                                        setSelectedHackathonId(null); // Clear hackathon ID to show submission modal
-                                        setIsDetailsModalOpen(true);
-                                      }}
-                                    >
-                                      <Eye className="w-4 h-4 mr-1" />
-                                      View Project
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold"
-                                      onClick={() => setActiveTab('score-projects')}
-                                    >
-                                      <Gavel className="w-4 h-4 mr-1" />
-                                      Review
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
+                      (() => {
+                        // Filter submissions based on search query and status
+                        const filteredSubmissions = submissions.filter((submission: any) => {
+                          const submitter = submission.submitter || {};
+                          const matchesSearch = submissionSearchQuery === '' || 
+                            submission.title?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                            `${submitter.firstName || ''} ${submitter.lastName || ''}`.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                            submitter.email?.toLowerCase().includes(submissionSearchQuery.toLowerCase());
+                          
+                          const matchesStatus = submissionStatusFilter === 'all' || 
+                            submission.status === submissionStatusFilter ||
+                            (submissionStatusFilter === 'SUBMITTED' && (submission.status === 'SUBMITTED' || submission.submittedAt)) ||
+                            (submissionStatusFilter === 'DRAFT' && (submission.status === 'DRAFT' || !submission.submittedAt));
+                          
+                          return matchesSearch && matchesStatus;
+                        });
+
+                        if (filteredSubmissions.length === 0) {
+                          return (
+                            <Card className="p-8 text-center bg-slate-800/50">
+                              <Gavel className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                              <p className="text-white">No submissions match your search criteria</p>
                             </Card>
-                          </Card3D>
-                        );
-                      })
+                          );
+                        }
+
+                        return filteredSubmissions.map((submission: any) => {
+                          const submitter = submission.submitter || {};
+                          const hackathon = hackathons.find((h: any) => h.id === submission.hackathonId);
+                          return (
+                            <Card3D key={submission.id} intensity={15}>
+                              <Card className="p-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-sm glass shadow-3d">
+                                <div className="flex items-start justify-between mb-4">
+                                  <div>
+                                    <h3 className="text-xl font-bold mb-1 text-white">{submission.title}</h3>
+                                    <div className="text-sm text-white">
+                                      <p>by {submitter.firstName || 'Unknown'} {submitter.lastName || 'User'}</p>
+                                      {submission.type === 'TEAM' && submission.teamInfo ? (
+                                        <p className="text-xs text-blue-300 mt-1">
+                                          Team: {submission.teamInfo.name} ({submission.teamInfo.members?.length || 0} members)
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-green-300 mt-1">Individual Participant</p>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-white mt-1">{hackathon?.title || 'Unknown Hackathon'}</p>
+                                  </div>
+                                  <Badge className={
+                                    submission.status === 'APPROVED' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+                                    submission.status === 'REJECTED' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+                                    'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                                  }>
+                                    {submission.status || 'DRAFT'}
+                                  </Badge>
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <p className="text-xs text-white mb-1">Submitted</p>
+                                    <p className="text-sm text-white">{submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString() : 'Not submitted'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-white mb-1">Actions</p>
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                                        onClick={() => {
+                                          // Open submission details modal
+                                          setSelectedSubmissionId(submission.id);
+                                          setSelectedHackathonId(null); // Clear hackathon ID to show submission modal
+                                          setIsDetailsModalOpen(true);
+                                        }}
+                                      >
+                                        <Eye className="w-4 h-4 mr-1" />
+                                        View Project
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold"
+                                        onClick={() => setActiveTab('score-projects')}
+                                      >
+                                        <Gavel className="w-4 h-4 mr-1" />
+                                        Review
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Card>
+                            </Card3D>
+                          );
+                        });
+                      })()
                     )}
                   </div>
                 )}
@@ -2044,7 +2124,33 @@ export function ParticipantDashboard({ userData, onLogout, onBack, initialTab = 
           </AnimatePresence>
         </main>
 
+        {/* Modals */}
+        {selectedHackathonId && (
+          <HackathonDetailsModal
+            hackathonId={selectedHackathonId}
+            isOpen={isDetailsModalOpen && !selectedSubmissionId}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedHackathonId(null);
+            }}
+            onJoin={() => {
+              // Refresh data after joining
+              fetchDashboardData();
+            }}
+          />
+        )}
 
+        {selectedSubmissionId && (
+          <SubmissionDetailsModal
+            submissionId={selectedSubmissionId}
+            isOpen={isDetailsModalOpen && !!selectedSubmissionId}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedSubmissionId(null);
+              setSelectedHackathonId(null);
+            }}
+          />
+        )}
     </div>
   );
 }

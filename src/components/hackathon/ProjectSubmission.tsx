@@ -264,11 +264,19 @@ export function ProjectSubmission({ onComplete, hackathonId, submissionId }: Pro
       
       if (submissionId) {
         await api.updateSubmission(submissionId, submissionData);
+        
+        // Trigger stats refresh after updating submission
+        api.triggerStatsRefresh();
+        
         toast.success('Submission updated successfully!');
       } else {
         console.log('🆕 Creating new submission...');
         const result = await api.createSubmission(submissionData);
         console.log('✅ Submission created:', result);
+        
+        // Trigger stats refresh after creating submission
+        api.triggerStatsRefresh();
+        
         toast.success('Submission created successfully!');
       }
       

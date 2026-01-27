@@ -1,14 +1,11 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Trophy, Users, Rocket, Sparkles, Brain, Zap, Globe, Code, Award, ChevronRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Brain, Zap, Globe, Code, Award, ChevronRight, Sparkles, Rocket, Trophy, Users } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
-import { Badge } from '../ui/badge';
 import { Card3D } from '../ui/Card3D';
 import { Button3D } from '../ui/Button3D';
 import { Scene3D, FloatingCube, FloatingSphere } from '../ui/Scene3D';
-import { useParallax } from '../../hooks/useParallax';
-import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 import { api } from '../../utils/api';
 
 interface HackathonLandingProps {
@@ -26,182 +23,67 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
     { label: 'Projects Submitted', value: '0', icon: Code },
   ]);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Fetch real stats data with comprehensive error handling and retry logic
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  };
+
+  // Fetch real stats data
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setStatsLoading(true);
-        console.log('🔄 Starting stats fetch process...');
+        console.log('🔄 Fetching platform stats...');
         
-        let realDataFetched = false;
-        let hackathons: any[] = [];
-        let submissions: any[] = [];
-        let totalParticipants = 0;
+        // Use the dedicated platform stats endpoint
+        const platformStats = await api.getPlatformStats();
         
-        // Try multiple approaches to get data
-        try {
-          // Approach 1: Try to fetch hackathons (should work without auth for public data)
-          console.log('� Fetching hackathons...');
-          hackathons = await api.getHackathons();
-          console.log(`✅ Successfully fetched ${hackathons.length} hackathons`);
-          
-          // Approach 2: Try to fetch submissions
-          console.log('📝 Fetching submissions...');
-          try {
-            submissions = await api.getSubmissions();
-            console.log(`✅ Successfully fetched ${submissions.length} submissions`);
-          } catch (submissionError: any) {
-            console.warn('⚠️ Could not fetch submissions:', submissionError.message);
-            // Continue without submissions data
-            submissions = [];
-          }
-          
-          // Calculate active hackathons
-          const activeHackathons = hackathons.filter((h: any) => 
-            ['PUBLISHED', 'REGISTRATION_OPEN', 'IN_PROGRESS', 'SUBMISSION_OPEN', 'LIVE'].includes(h.status)
-          );
-          console.log(`✅ Found ${activeHackathons.length} active hackathons`);
-          
-          // Calculate participants using multiple methods
-          const uniqueParticipantIds = new Set();
-          
-          // Method 1: Count unique submitters from submissions
-          if (submissions.length > 0) {
-            submissions.forEach((s: any) => {
-              if (s.submitterId && !uniqueParticipantIds.has(s.submitterId)) {
-                uniqueParticipantIds.add(s.submitterId);
-              }
-            });
-            console.log(`📊 Found ${uniqueParticipantIds.size} unique participants from submissions`);
-          }
-          
-          // Method 2: Try to get registered participants from each hackathon
-          let participantsFetchedFromHackathons = 0;
-          for (const hackathon of hackathons.slice(0, 5)) { // Limit to first 5 to avoid too many API calls
-            try {
-              console.log(`� Fetching participants for: ${hackathon.title}`);
-              const participants = await api.getHackathonParticipants(hackathon.id);
-              
-              participants.forEach((p: any) => {
-                if (p.id && !uniqueParticipantIds.has(p.id)) {
-                  uniqueParticipantIds.add(p.id);
-                  participantsFetchedFromHackathons++;
-                }
-              });
-              
-              console.log(`✅ Added ${participants.length} participants from ${hackathon.title}`);
-            } catch (participantError: any) {
-              console.warn(`⚠️ Could not fetch participants for ${hackathon.title}:`, participantError.message);
-              // Continue with next hackathon
-            }
-          }
-          
-          totalParticipants = uniqueParticipantIds.size;
-          
-          // If we have at least hackathons data, consider it a success
-          if (hackathons.length > 0) {
-            console.log('� Successfully calculated real stats:', {
-              totalHackathons: hackathons.length,
-              activeHackathons: activeHackathons.length,
-              totalSubmissions: submissions.length,
-              totalParticipants,
-              participantsFromSubmissions: submissions.length > 0 ? submissions.filter((s: any) => s.submitterId).length : 0,
-              participantsFromHackathons: participantsFetchedFromHackathons
-            });
-            
-            // Update with real data
-            setStats([
-              { label: 'Active Hackathons', value: activeHackathons.length.toString(), icon: Trophy },
-              { label: 'Participants', value: totalParticipants.toString(), icon: Users },
-              { label: 'Projects Submitted', value: submissions.length.toString(), icon: Code },
-            ]);
-            
-            realDataFetched = true;
-            setLastUpdated(new Date());
-            console.log('🎉 Real stats successfully loaded and displayed!');
-          }
-          
-        } catch (apiError: any) {
-          console.error('❌ Failed to fetch data from API:', apiError);
-          
-          if (apiError.message?.includes('401') || apiError.message?.includes('Unauthorized')) {
-            console.log('🔐 Authentication required for API access');
-          } else if (apiError.message?.includes('fetch')) {
-            console.log('🌐 Network error - API might be unavailable');
-          } else {
-            console.log('🔧 Unknown API error');
-          }
-        }
+        // Update stats with real data
+        setStats([
+          { label: 'Active Hackathons', value: platformStats.activeHackathons.toString(), icon: Trophy },
+          { label: 'Participants', value: platformStats.totalParticipants.toString(), icon: Users },
+          { label: 'Projects Submitted', value: platformStats.totalSubmissions.toString(), icon: Code },
+        ]);
         
-        // Fallback: Show demo data if real data couldn't be fetched
-        if (!realDataFetched) {
-          console.log('📊 Using attractive demo data for public display');
-          setStats([
-            { label: 'Active Hackathons', value: '12', icon: Trophy },
-            { label: 'Participants', value: '1,247', icon: Users },
-            { label: 'Projects Submitted', value: '342', icon: Code },
-          ]);
-          setLastUpdated(new Date());
-        }
+        console.log('✅ Platform stats updated:', platformStats);
         
       } catch (error) {
-        console.error('❌ Unexpected error in stats fetching:', error);
-        // Final fallback
+        console.error('❌ Error fetching platform stats:', error);
+        // Show fallback attractive numbers on error
         setStats([
-          { label: 'Active Hackathons', value: '12', icon: Trophy },
-          { label: 'Participants', value: '1,247', icon: Users },
-          { label: 'Projects Submitted', value: '342', icon: Code },
+          { label: 'Active Hackathons', value: '5', icon: Trophy },
+          { label: 'Participants', value: '127', icon: Users },
+          { label: 'Projects Submitted', value: '42', icon: Code },
         ]);
       } finally {
         setStatsLoading(false);
-        console.log('✅ Stats loading completed');
       }
     };
 
-    // Add a small delay to ensure the component is mounted
-    const timer = setTimeout(fetchStats, 100);
-    return () => clearTimeout(timer);
+    fetchStats();
+    
+    // Subscribe to global stats refresh events
+    const unsubscribe = api.onStatsRefresh(fetchStats);
+    
+    // Set up periodic refresh every 60 seconds to catch updates
+    const interval = setInterval(fetchStats, 60000);
+    
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
-
-  // Manual refresh function for testing
-  const refreshStats = async () => {
-    console.log('🔄 Manual refresh triggered');
-    setStatsLoading(true);
-    // Re-run the fetch logic
-    const timer = setTimeout(async () => {
-      try {
-        setStatsLoading(true);
-        console.log('🔄 Starting manual stats refresh...');
-        
-        const hackathons = await api.getHackathons();
-        const submissions = await api.getSubmissions();
-        
-        const activeHackathons = hackathons.filter((h: any) => 
-          ['PUBLISHED', 'REGISTRATION_OPEN', 'IN_PROGRESS', 'SUBMISSION_OPEN', 'LIVE'].includes(h.status)
-        );
-        
-        const uniqueParticipantIds = new Set();
-        submissions.forEach((s: any) => {
-          if (s.submitterId) uniqueParticipantIds.add(s.submitterId);
-        });
-        
-        setStats([
-          { label: 'Active Hackathons', value: activeHackathons.length.toString(), icon: Trophy },
-          { label: 'Participants', value: uniqueParticipantIds.size.toString(), icon: Users },
-          { label: 'Projects Submitted', value: submissions.length.toString(), icon: Code },
-        ]);
-        
-        setLastUpdated(new Date());
-        console.log('✅ Manual refresh completed successfully!');
-      } catch (error) {
-        console.error('❌ Manual refresh failed:', error);
-      } finally {
-        setStatsLoading(false);
-      }
-    }, 100);
-  };
   const features = [
     {
       icon: Brain,
@@ -228,21 +110,6 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
       color: 'from-orange-500 to-red-500',
     },
   ];
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -386,26 +253,9 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
         </div>
       </section>
 
-      {/* Live Stats Section */}
-      <section className="pt-0 pb-6 px-6 bg-slate-900/50 -mt-6">
+      {/* Stats Cards Section */}
+      <section className="py-6 px-6 bg-slate-900/30">
         <div className="container mx-auto">
-          {/* Stats Header with Last Updated Info */}
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold text-white mb-2">Live Platform Statistics</h2>
-            {lastUpdated && (
-              <div className="flex items-center justify-center gap-2 text-sm text-white/70">
-                <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
-                <button 
-                  onClick={refreshStats}
-                  className="text-blue-400 hover:text-blue-300 underline ml-2"
-                  disabled={statsLoading}
-                >
-                  {statsLoading ? 'Refreshing...' : 'Refresh'}
-                </button>
-              </div>
-            )}
-          </div>
-          
           <motion.div
             variants={container}
             initial="hidden"
@@ -424,12 +274,13 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
                     </div>
                     <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
                       {statsLoading ? (
-                        <div className="animate-pulse bg-slate-600 h-8 w-12 mx-auto rounded"></div>
+                        <div className="animate-pulse bg-slate-600 h-8 w-16 mx-auto rounded"></div>
                       ) : (
                         <motion.span
                           initial={{ opacity: 0, scale: 0.5 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.1, duration: 0.5 }}
+                          key={stat.value} // Key ensures re-animation when value changes
                         >
                           {stat.value}
                         </motion.span>
@@ -443,6 +294,7 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
           </motion.div>
         </div>
       </section>
+
       {/* How It Works Section */}
       <section className="py-6 px-6 bg-slate-900/30">
         <div className="container mx-auto">

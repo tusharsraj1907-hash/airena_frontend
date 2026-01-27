@@ -211,6 +211,34 @@ class ApiService {
     });
   }
 
+  // Analytics endpoints
+  async getPlatformStats() {
+    return this.request<{
+      totalHackathons: number;
+      activeHackathons: number;
+      totalParticipants: number;
+      totalSubmissions: number;
+    }>('/analytics/platform-stats');
+  }
+
+  // Global stats refresh event - can be called after important actions
+  private statsRefreshCallbacks: (() => void)[] = [];
+  
+  onStatsRefresh(callback: () => void) {
+    this.statsRefreshCallbacks.push(callback);
+    return () => {
+      const index = this.statsRefreshCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statsRefreshCallbacks.splice(index, 1);
+      }
+    };
+  }
+  
+  triggerStatsRefresh() {
+    console.log('🔄 Triggering global stats refresh...');
+    this.statsRefreshCallbacks.forEach(callback => callback());
+  }
+
   // Submission endpoints
   async getSubmissions(filters?: { hackathonId?: string; userId?: string; teamId?: string; status?: string; isDraft?: boolean }) {
     const params = new URLSearchParams();

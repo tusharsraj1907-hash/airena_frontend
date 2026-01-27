@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Mail, Lock, User, ArrowRight, Github, Chrome, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';

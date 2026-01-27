@@ -132,7 +132,57 @@ export function SubmissionDetailsModal({
                         }}
                       >
                         <div className="space-y-6">
-                          {/* Description */}
+                          {/* Participant Details */}
+                          <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                              <User className="w-5 h-5 text-blue-400" />
+                              Participant Details
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs text-slate-300 mb-1">Name</p>
+                                <p className="text-white font-medium">{submitter.firstName} {submitter.lastName}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-300 mb-1">Email</p>
+                                <p className="text-white font-medium">{submitter.email}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-300 mb-1">Submission Type</p>
+                                <p className="text-white font-medium">
+                                  {submission.type === 'TEAM' ? `Team Submission` : 'Individual Submission'}
+                                </p>
+                              </div>
+                              {submission.type === 'TEAM' && submission.teamInfo && (
+                                <div>
+                                  <p className="text-xs text-slate-300 mb-1">Team Name</p>
+                                  <p className="text-white font-medium">{submission.teamInfo.name}</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Team Members */}
+                            {submission.type === 'TEAM' && submission.teamInfo?.members && (
+                              <div className="mt-4">
+                                <p className="text-xs text-slate-300 mb-2">Team Members ({submission.teamInfo.members.length})</p>
+                                <div className="space-y-2">
+                                  {submission.teamInfo.members.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-3 p-2 bg-slate-700 rounded">
+                                      <User className="w-4 h-4 text-blue-400" />
+                                      <div>
+                                        <p className="text-white text-sm font-medium">
+                                          {member.user?.firstName} {member.user?.lastName}
+                                        </p>
+                                        <p className="text-slate-300 text-xs">{member.user?.email}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Project Description */}
                           <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                               <FileText className="w-5 h-5 text-blue-400" />
@@ -164,7 +214,7 @@ export function SubmissionDetailsModal({
                           )}
 
                           {/* Tech Stack */}
-                          {submission.techStack && (
+                          {submission.techStack && submission.techStack.trim() && (
                             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                               <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                 <Briefcase className="w-5 h-5 text-green-400" />
@@ -183,23 +233,47 @@ export function SubmissionDetailsModal({
                             </div>
                           )}
 
-                          {/* Repository Link Only */}
-                          {submission.repositoryUrl && (
+                          {/* Repository Link */}
+                          {((submission.repositoryUrl && submission.repositoryUrl.trim()) || (submission.repoUrl && submission.repoUrl.trim())) && (
                             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                               <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                 <Github className="w-5 h-5 text-purple-400" />
                                 Project Repository
                               </h3>
                               <a
-                                href={submission.repositoryUrl}
+                                href={submission.repositoryUrl || submission.repoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-3 p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-all duration-300 border border-slate-600"
                               >
                                 <Github className="w-6 h-6 text-white" />
-                                <span className="text-white flex-1 truncate font-medium">
-                                  View on GitHub
-                                </span>
+                                <div className="flex-1">
+                                  <p className="text-white font-medium">View Source Code</p>
+                                  <p className="text-slate-300 text-sm truncate">{submission.repositoryUrl || submission.repoUrl}</p>
+                                </div>
+                                <span className="text-slate-300 text-sm">↗</span>
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Demo/Live URL */}
+                          {(submission.demoUrl && submission.demoUrl.trim()) && (
+                            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <Target className="w-5 h-5 text-green-400" />
+                                Live Demo
+                              </h3>
+                              <a
+                                href={submission.demoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-all duration-300 border border-slate-600"
+                              >
+                                <Target className="w-6 h-6 text-white" />
+                                <div className="flex-1">
+                                  <p className="text-white font-medium">View Live Demo</p>
+                                  <p className="text-slate-300 text-sm truncate">{submission.demoUrl}</p>
+                                </div>
                                 <span className="text-slate-300 text-sm">↗</span>
                               </a>
                             </div>
@@ -219,35 +293,72 @@ export function SubmissionDetailsModal({
                                   const projectFiles: any[] = [];
                                   const presentationFiles: any[] = [];
                                   
-                                  submission.files.forEach((fileStr: string, idx: number) => {
-                                    let fileData: any = {};
+                                  submission.files.forEach((file: any, idx: number) => {
+                                    // Handle both string and object file formats
+                                    let fileName = 'Unknown File';
+                                    let fileUrl = '';
+                                    let fileSize = 0;
+                                    let fileType = '';
                                     
-                                    try {
-                                      // Try to parse as JSON first
-                                      fileData = JSON.parse(fileStr);
-                                    } catch {
-                                      // If not JSON, treat as simple string/object
-                                      fileData = typeof fileStr === 'object' ? fileStr : { name: fileStr, url: fileStr };
+                                    if (typeof file === 'string') {
+                                      try {
+                                        const parsed = JSON.parse(file);
+                                        fileName = parsed.name || parsed.originalName || parsed.fileName || `File ${idx + 1}`;
+                                        fileUrl = parsed.downloadUrl || parsed.url || parsed.fileUrl || file;
+                                        fileSize = parsed.size || parsed.fileSize || 0;
+                                        fileType = parsed.type || parsed.mimeType || parsed.fileType || '';
+                                      } catch {
+                                        // If it's a URL string, extract filename from URL
+                                        if (file.includes('/')) {
+                                          const urlParts = file.split('/');
+                                          fileName = urlParts[urlParts.length - 1] || `File ${idx + 1}`;
+                                          // Remove query parameters and decode
+                                          fileName = decodeURIComponent(fileName.split('?')[0]);
+                                        } else {
+                                          fileName = file || `File ${idx + 1}`;
+                                        }
+                                        fileUrl = file;
+                                        // Try to guess file type from extension
+                                        const ext = fileName.split('.').pop()?.toLowerCase();
+                                        if (ext) {
+                                          if (['pdf'].includes(ext)) fileType = 'application/pdf';
+                                          else if (['ppt', 'pptx'].includes(ext)) fileType = 'application/vnd.ms-powerpoint';
+                                          else if (['doc', 'docx'].includes(ext)) fileType = 'application/msword';
+                                          else if (['zip', 'rar'].includes(ext)) fileType = 'application/zip';
+                                          else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) fileType = 'image/' + ext;
+                                          else fileType = 'application/octet-stream';
+                                        }
+                                      }
+                                    } else if (typeof file === 'object' && file !== null) {
+                                      fileName = file.name || file.originalName || file.fileName || `File ${idx + 1}`;
+                                      fileUrl = file.downloadUrl || file.url || file.fileUrl || '';
+                                      fileSize = file.size || file.fileSize || 0;
+                                      fileType = file.type || file.mimeType || file.fileType || '';
                                     }
                                     
-                                    // Extract file information
-                                    const fileName = fileData.name || fileData.originalName || fileData.fileName || `File ${idx + 1}`;
-                                    let fileUrl = fileData.downloadUrl || fileData.url || fileData.key || fileData.fileUrl || fileStr;
-                                    
-                                    // If the URL is a relative path, make it absolute
-                                    if (fileUrl && !fileUrl.startsWith('http')) {
-                                      if (fileUrl.startsWith('/')) {
+                                    // CRITICAL FIX: Construct proper file URL for local storage
+                                    // Files are stored in backend-core/uploads/submissions/{submissionId}/{filename}
+                                    // And served via /uploads/ static prefix
+                                    if (!fileUrl || fileUrl === '' || fileUrl === 'Unknown') {
+                                      // Construct URL from submission ID and filename
+                                      fileUrl = `http://localhost:3002/uploads/submissions/${submissionId}/${fileName}`;
+                                    } else if (!fileUrl.startsWith('http')) {
+                                      // If it's a relative path, make it absolute
+                                      if (fileUrl.startsWith('/uploads/')) {
                                         fileUrl = `http://localhost:3002${fileUrl}`;
+                                      } else if (fileUrl.startsWith('uploads/')) {
+                                        fileUrl = `http://localhost:3002/${fileUrl}`;
                                       } else {
-                                        fileUrl = `http://localhost:3002/api/v1/uploads/${fileUrl}`;
+                                        // Assume it's just a filename and construct full path
+                                        fileUrl = `http://localhost:3002/uploads/submissions/${submissionId}/${fileUrl}`;
                                       }
                                     }
                                     
-                                    const fileType = fileData.type || fileData.mimeType || fileData.fileType || '';
-                                    const fileSize = fileData.size || fileData.fileSize || 0;
-                                    
-                                    // Determine if it's a presentation file based on extension
-                                    const isPresentationFile = fileName.match(/\.(pdf|ppt|pptx|key|odp)$/i);
+                                    // Determine if it's a presentation file based on extension or type
+                                    const isPresentationFile = fileName.match(/\.(pdf|ppt|pptx|key|odp)$/i) || 
+                                                             fileType.includes('presentation') || 
+                                                             fileType.includes('pdf') ||
+                                                             fileType.includes('powerpoint');
                                     
                                     const processedFile = {
                                       name: fileName,
@@ -274,34 +385,80 @@ export function SubmissionDetailsModal({
                                             Project Files ({projectFiles.length})
                                           </h4>
                                           <div className="space-y-3">
-                                            {projectFiles.map((file, idx) => (
-                                              <div
-                                                key={`project-${idx}`}
-                                                className="flex items-center gap-4 p-3 bg-slate-600 rounded-lg hover:bg-slate-500 transition-all duration-300"
-                                              >
-                                                <FileText className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="text-white font-medium truncate">
-                                                    {file.name}
-                                                  </p>
-                                                  {file.size > 0 && (
-                                                    <p className="text-slate-300 text-sm">
-                                                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                <a
-                                                  href={file.url}
-                                                  download={file.name}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                            {projectFiles.map((file, idx) => {
+                                              // Determine file icon based on type or extension
+                                              const getFileIcon = () => {
+                                                if (file.type.includes('image') || file.name.match(/\.(jpg|jpeg|png|gif|svg)$/i)) {
+                                                  return <FileText className="w-5 h-5 text-blue-400 flex-shrink-0" />;
+                                                } else if (file.name.match(/\.(zip|rar|7z)$/i)) {
+                                                  return <FileText className="w-5 h-5 text-yellow-400 flex-shrink-0" />;
+                                                } else if (file.name.match(/\.(js|ts|jsx|tsx|html|css|py|java|cpp|c)$/i)) {
+                                                  return <FileText className="w-5 h-5 text-purple-400 flex-shrink-0" />;
+                                                } else {
+                                                  return <FileText className="w-5 h-5 text-green-400 flex-shrink-0" />;
+                                                }
+                                              };
+                                              
+                                              return (
+                                                <div
+                                                  key={`project-${idx}`}
+                                                  className="flex items-center gap-4 p-3 bg-slate-600 rounded-lg hover:bg-slate-500 transition-all duration-300"
                                                 >
-                                                  <Download className="w-4 h-4" />
-                                                  Download
-                                                </a>
-                                              </div>
-                                            ))}
+                                                  {getFileIcon()}
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-white font-medium truncate">
+                                                      {file.name}
+                                                    </p>
+                                                    <div className="flex items-center gap-4 text-xs text-slate-300 mt-1">
+                                                      {file.size > 0 && (
+                                                        <span>
+                                                          {file.size > 1024 * 1024 
+                                                            ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                                                            : `${(file.size / 1024).toFixed(2)} KB`
+                                                          }
+                                                        </span>
+                                                      )}
+                                                      {file.type && (
+                                                        <span className="px-2 py-1 bg-slate-700 rounded text-xs">
+                                                          {file.type.split('/')[1]?.toUpperCase() || 'FILE'}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex gap-2">
+                                                    <a
+                                                      href={file.url || '#'}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                                      onClick={(e) => {
+                                                        if (!file.url) {
+                                                          e.preventDefault();
+                                                          toast.error('File URL not available');
+                                                        }
+                                                      }}
+                                                    >
+                                                      <FileText className="w-4 h-4" />
+                                                      View
+                                                    </a>
+                                                    <a
+                                                      href={file.url || '#'}
+                                                      download={file.name}
+                                                      className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                                      onClick={(e) => {
+                                                        if (!file.url) {
+                                                          e.preventDefault();
+                                                          toast.error('File URL not available');
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Download className="w-4 h-4" />
+                                                      Download
+                                                    </a>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       )}
@@ -314,35 +471,90 @@ export function SubmissionDetailsModal({
                                             Presentation Files ({presentationFiles.length})
                                           </h4>
                                           <div className="space-y-3">
-                                            {presentationFiles.map((file, idx) => (
-                                              <div
-                                                key={`presentation-${idx}`}
-                                                className="flex items-center gap-4 p-3 bg-slate-600 rounded-lg hover:bg-slate-500 transition-all duration-300"
-                                              >
-                                                <FileText className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="text-white font-medium truncate">
-                                                    {file.name}
-                                                  </p>
-                                                  {file.size > 0 && (
-                                                    <p className="text-slate-300 text-sm">
-                                                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                <a
-                                                  href={file.url}
-                                                  download={file.name}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                            {presentationFiles.map((file, idx) => {
+                                              // Determine file icon for presentations
+                                              const getFileIcon = () => {
+                                                if (file.type.includes('pdf') || file.name.match(/\.pdf$/i)) {
+                                                  return <FileText className="w-5 h-5 text-red-400 flex-shrink-0" />;
+                                                } else if (file.name.match(/\.(ppt|pptx)$/i)) {
+                                                  return <FileText className="w-5 h-5 text-orange-400 flex-shrink-0" />;
+                                                } else if (file.name.match(/\.key$/i)) {
+                                                  return <FileText className="w-5 h-5 text-blue-400 flex-shrink-0" />;
+                                                } else {
+                                                  return <FileText className="w-5 h-5 text-purple-400 flex-shrink-0" />;
+                                                }
+                                              };
+                                              
+                                              return (
+                                                <div
+                                                  key={`presentation-${idx}`}
+                                                  className="flex items-center gap-4 p-3 bg-slate-600 rounded-lg hover:bg-slate-500 transition-all duration-300"
                                                 >
-                                                  <Download className="w-4 h-4" />
-                                                  Download
-                                                </a>
-                                              </div>
-                                            ))}
+                                                  {getFileIcon()}
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-white font-medium truncate">
+                                                      {file.name}
+                                                    </p>
+                                                    <div className="flex items-center gap-4 text-xs text-slate-300 mt-1">
+                                                      {file.size > 0 && (
+                                                        <span>
+                                                          {file.size > 1024 * 1024 
+                                                            ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                                                            : `${(file.size / 1024).toFixed(2)} KB`
+                                                          }
+                                                        </span>
+                                                      )}
+                                                      {file.type && (
+                                                        <span className="px-2 py-1 bg-slate-700 rounded text-xs">
+                                                          {file.type.split('/')[1]?.toUpperCase() || 'PRESENTATION'}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex gap-2">
+                                                    <a
+                                                      href={file.url || '#'}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                                      onClick={(e) => {
+                                                        if (!file.url) {
+                                                          e.preventDefault();
+                                                          toast.error('File URL not available');
+                                                        }
+                                                      }}
+                                                    >
+                                                      <FileText className="w-4 h-4" />
+                                                      View
+                                                    </a>
+                                                    <a
+                                                      href={file.url || '#'}
+                                                      download={file.name}
+                                                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded text-sm flex items-center gap-2 transition-all duration-300"
+                                                      onClick={(e) => {
+                                                        if (!file.url) {
+                                                          e.preventDefault();
+                                                          toast.error('File URL not available');
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Download className="w-4 h-4" />
+                                                      Download
+                                                    </a>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
                                           </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Show message if no files in either category */}
+                                      {projectFiles.length === 0 && presentationFiles.length === 0 && (
+                                        <div className="bg-slate-700 p-4 rounded-lg">
+                                          <p className="text-slate-300 text-center">
+                                            Files are being processed. Please check the console for file data structure.
+                                          </p>
                                         </div>
                                       )}
                                     </>

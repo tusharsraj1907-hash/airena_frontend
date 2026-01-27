@@ -12,6 +12,8 @@ interface Card3DProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'childr
 export function Card3D({ 
   children, 
   className,
+  intensity,
+  flipOnHover,
   ...props 
 }: Card3DProps) {
   return (

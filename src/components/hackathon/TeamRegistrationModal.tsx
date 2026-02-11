@@ -19,6 +19,7 @@ import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { api } from '../../utils/api';
 import { toast } from 'sonner';
+import { PaymentModal } from './PaymentModal';
 
 interface TeamRegistrationModalProps {
   hackathon: any;
@@ -40,12 +41,13 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [problemStatementTracks, setProblemStatementTracks] = useState<any[]>([]);
-  
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   const [formData, setFormData] = useState({
     teamName: '',
     teamDescription: '',
   });
-  
+
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   useEffect(() => {
@@ -53,8 +55,20 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
       fetchCurrentUser();
       fetchProblemStatementTracks();
       resetForm();
+      // Ensure payment modal is closed when opening registration modal
+      setShowPaymentModal(false);
     }
   }, [isOpen]);
+
+  // Sync user name when loaded or type changes
+  useEffect(() => {
+    if (currentUser && registrationType === 'individual') {
+      setFormData(prev => ({
+        ...prev,
+        teamName: `${currentUser.firstName} ${currentUser.lastName}`
+      }));
+    }
+  }, [currentUser, registrationType]);
 
   const fetchProblemStatementTracks = async () => {
     try {
@@ -107,7 +121,7 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
         teamName: '',
       }));
     }
-    
+
     // If there are problem statement tracks, go to track selection, otherwise go to details
     if (problemStatementTracks && problemStatementTracks.length > 0) {
       setStep('track');
@@ -141,6 +155,7 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
 
   const validateForm = () => {
     if (!formData.teamName.trim()) {
+      console.error('❌ Validation Failed: Team Name is empty');
       toast.error('Please enter a team name');
       return false;
     }
@@ -153,7 +168,7 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
 
     if (registrationType === 'team') {
       const totalMembers = teamMembers.length + 1; // +1 for current user
-      
+
       if (totalMembers < hackathon.minTeamSize) {
         toast.error(`Minimum team size is ${hackathon.minTeamSize} members`);
         return false;
@@ -189,6 +204,13 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    // Open payment modal instead of directly registering
+    console.log('✅ Validation passed. Opening Payment Modal...');
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = async (paymentDetails: { paymentId: string; providerPaymentId: string }) => {
+    setShowPaymentModal(false);
     setLoading(true);
     try {
       if (registrationType === 'team') {
@@ -196,14 +218,16 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
         const registrationData = {
           teamName: formData.teamName,
           teamDescription: formData.teamDescription,
-          selectedTrack: selectedTrack,
+          selectedTrack: selectedTrack || undefined,
           teamMembers: teamMembers.map(m => ({
             name: m.name,
             email: m.email,
             role: m.role,
           })),
+          paymentId: paymentDetails.paymentId,
+          providerPaymentId: paymentDetails.providerPaymentId
         };
-        
+
         console.log('🔄 Sending team registration:', registrationData);
         const result = await api.registerForHackathon(hackathon.id, registrationData);
         console.log('✅ Registration result:', result);
@@ -211,11 +235,15 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
       } else {
         // Individual registration
         console.log('🔄 Sending individual registration');
-        const result = await api.registerForHackathon(hackathon.id, { selectedTrack: selectedTrack });
+        const result = await api.registerForHackathon(hackathon.id, {
+          selectedTrack: selectedTrack || undefined,
+          paymentId: paymentDetails.paymentId,
+          providerPaymentId: paymentDetails.providerPaymentId
+        });
         console.log('✅ Registration result:', result);
         toast.success(`Successfully registered for ${hackathon.title}!`);
       }
-      
+
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -257,7 +285,7 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
           />
 
           {/* Modal - CENTERED ON FULL SCREEN */}
-          <div 
+          <div
             className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
             style={{
               position: 'fixed',
@@ -399,17 +427,15 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
                             onClick={() => handleTrackSelection(track.trackNumber)}
                             className="cursor-pointer"
                           >
-                            <Card className={`p-4 border transition-all ${
-                              selectedTrack === track.trackNumber
-                                ? 'bg-blue-500/20 border-blue-500'
-                                : 'bg-slate-800/50 border-slate-700 hover:border-blue-400'
-                            }`}>
+                            <Card className={`p-4 border transition-all ${selectedTrack === track.trackNumber
+                              ? 'bg-blue-500/20 border-blue-500'
+                              : 'bg-slate-800/50 border-slate-700 hover:border-blue-400'
+                              }`}>
                               <div className="flex items-start gap-4">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
-                                  selectedTrack === track.trackNumber
-                                    ? 'bg-blue-500'
-                                    : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                                }`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${selectedTrack === track.trackNumber
+                                  ? 'bg-blue-500'
+                                  : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                                  }`}>
                                   {track.trackNumber}
                                 </div>
                                 <div className="flex-1">
@@ -491,7 +517,7 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
                           value={formData.teamDescription}
                           onChange={(e) => setFormData({ ...formData, teamDescription: e.target.value })}
                           className="mt-2 bg-slate-800/50 border-slate-600 text-white placeholder-white/60"
-                          placeholder={registrationType === 'individual' 
+                          placeholder={registrationType === 'individual'
                             ? 'Tell us about your skills and experience...'
                             : 'Describe your team and what you hope to achieve...'
                           }
@@ -602,6 +628,14 @@ export function TeamRegistrationModal({ hackathon, isOpen, onClose, onSuccess }:
               </Card>
             </motion.div>
           </div>
+
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            onSuccess={handlePaymentSuccess}
+            hackathonTitle={hackathon.title}
+            amount={hackathon.registrationFee || 500} // Default or actual fee
+          />
         </>
       )}
     </AnimatePresence>

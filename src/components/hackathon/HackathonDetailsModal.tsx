@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { agentMaxDetails } from '../../data/agentMax';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Trophy,
@@ -43,6 +45,7 @@ interface HackathonDetailsModalProps {
 }
 
 export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, onNavigateToAuth }: HackathonDetailsModalProps) {
+  const navigate = useNavigate();
   const [hackathon, setHackathon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
@@ -52,6 +55,34 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
   const [isAuthenticated, setIsAuthenticated] = useState(false); // Track auth status
   const [isTeamRegistrationOpen, setIsTeamRegistrationOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'rules' | 'timeline'>('overview');
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+
+  // Calculate team stats
+  const teamStats = useMemo(() => {
+    // Hardcode stats for AgentMax as requested
+    if (hackathon?.title?.includes('AgentMax') || hackathon?.title?.includes('AgentMaX')) {
+      return {
+        teamCount: agentMaxDetails.stats.teamCount,
+        avgMembers: agentMaxDetails.stats.avgTeamSize
+      };
+    }
+
+    const uniqueTeams = new Set();
+    let teamParticipantsCount = 0;
+
+    participants.forEach(p => {
+      if (p.team?.id) {
+        uniqueTeams.add(p.team.id);
+        teamParticipantsCount++;
+      }
+    });
+
+    const teamCount = uniqueTeams.size;
+    const avgMembers = teamCount > 0 ? Math.round(teamParticipantsCount / teamCount) : 0;
+
+    return { teamCount, avgMembers };
+  }, [participants]);
 
   useEffect(() => {
     if (isOpen && hackathonId) {
@@ -88,132 +119,35 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
   const fetchHackathonDetails = async () => {
     setLoading(true);
     try {
-      // Check if this is a sample hackathon (like AgentMax)
-      if (hackathonId === 'agentmax-2024') {
-        // Use sample data for AgentMax hackathon
-        const sampleHackathons = [
-          {
-            id: 'agentmax-2024',
-            title: 'AgentMax - AI Agent Building Challenge',
-            description: 'Build the next generation of AI agents that can revolutionize how we interact with technology. Create intelligent agents that can understand, reason, and act autonomously to solve real-world problems.',
-            category: 'AI_ML',
-            status: 'COMPLETED',
-            organizer: { firstName: 'AgentMax', lastName: 'Team' },
-            bannerImageUrl: 'https://agentmax.in/assets/banner.jpg',
-            logoImageUrl: 'https://agentmax.in/assets/logo.png',
-            prizeAmount: 100000,
-            prizeCurrency: 'USD',
-            registrationStart: '2024-12-01T00:00:00Z',
-            registrationEnd: '2026-02-15T23:59:59Z', // Extended for testing
-            startDate: '2026-02-16T00:00:00Z',
-            endDate: '2026-03-02T23:59:59Z',
-            submissionDeadline: '2026-03-02T23:59:59Z',
-            registrationFee: 0,
-            minTeamSize: 1,
-            maxTeamSize: 4,
-            allowIndividual: true,
-            venue: 'Virtual Event - Discord & Zoom',
-            isVirtual: true,
-            whyParticipate: 'Join the future of AI development! Build cutting-edge AI agents, learn from industry experts, network with top developers, and compete for substantial prizes while solving real-world challenges.',
-            expectedOutcome: 'Participants will create functional AI agents capable of autonomous decision-making, problem-solving, and task execution. Projects should demonstrate innovation in agent architecture, learning capabilities, and practical applications.',
-            termsAndConditions: 'By participating, you agree to open-source your code, respect intellectual property rights, follow the code of conduct, and allow organizers to showcase your work. All submissions must be original work created during the hackathon period.',
-            contactPerson: 'AgentMax Team',
-            contactEmail: 'hello@agentmax.in',
-            contactPhone: '+1-555-AGENT-MAX',
-            rules: 'Teams must register before the deadline, submit working code with documentation, present their solution, and follow fair play guidelines. Use of pre-existing code libraries is allowed but must be declared.',
-            guidelines: 'Focus on agent autonomy, scalability, and real-world applicability. Provide clear documentation, demo videos, and deployment instructions. Judges will evaluate based on innovation, technical implementation, and practical impact.',
-            timeline: [
-              {
-                phase: 'Registration',
-                description: 'Team registration and idea submission',
-                startDate: '2024-12-01T00:00:00Z',
-                endDate: '2026-02-15T23:59:59Z'
-              },
-              {
-                phase: 'Development',
-                description: 'Build your AI agents',
-                startDate: '2026-02-16T00:00:00Z',
-                endDate: '2026-02-28T23:59:59Z'
-              },
-              {
-                phase: 'Submission',
-                description: 'Submit final projects and demos',
-                startDate: '2026-03-01T00:00:00Z',
-                endDate: '2026-03-02T18:00:00Z'
-              },
-              {
-                phase: 'Judging & Results',
-                description: 'Final presentations and winner announcement',
-                startDate: '2026-03-02T19:00:00Z',
-                endDate: '2026-03-02T23:59:59Z'
-              }
-            ],
-            judgingCriteria: [
-              {
-                criterion: 'Innovation & Creativity',
-                description: 'Originality of the AI agent concept and approach',
-                weight: 25
-              },
-              {
-                criterion: 'Technical Implementation',
-                description: 'Code quality, architecture, and technical excellence',
-                weight: 30
-              },
-              {
-                criterion: 'Practical Impact',
-                description: 'Real-world applicability and problem-solving potential',
-                weight: 25
-              },
-              {
-                criterion: 'Presentation & Demo',
-                description: 'Quality of presentation and demonstration',
-                weight: 20
-              }
-            ],
-            judges: [
-              {
-                name: 'Dr. Sarah Chen',
-                email: 'sarah.chen@airesearch.com',
-                bio: 'Leading AI researcher with 15+ years in machine learning and autonomous systems. Published 100+ papers on AI agents and multi-agent systems.',
-                expertise: 'AI/ML, Autonomous Systems, Multi-Agent Systems',
-                linkedinUrl: 'https://linkedin.com/in/sarahchen-ai',
-                profileImageUrl: 'https://agentmax.in/assets/judges/sarah-chen.jpg'
-              },
-              {
-                name: 'Marcus Rodriguez',
-                email: 'marcus@techventures.com',
-                bio: 'Serial entrepreneur and CTO with expertise in scaling AI products. Founded 3 successful AI startups and currently leads AI initiatives at TechVentures.',
-                expertise: 'AI Product Development, Startup Strategy, Technical Leadership',
-                linkedinUrl: 'https://linkedin.com/in/marcusrodriguez-tech',
-                profileImageUrl: 'https://agentmax.in/assets/judges/marcus-rodriguez.jpg'
-              },
-              {
-                name: 'Prof. Aisha Patel',
-                email: 'aisha.patel@university.edu',
-                bio: 'Computer Science Professor specializing in intelligent agents and human-AI interaction. Director of the Autonomous Systems Lab at Stanford University.',
-                expertise: 'Human-AI Interaction, Intelligent Agents, Computer Science Education',
-                linkedinUrl: 'https://linkedin.com/in/aishapatel-cs',
-                profileImageUrl: 'https://agentmax.in/assets/judges/aisha-patel.jpg'
-              }
-            ],
-            _count: {
-              teams: 156,
-              submissions: 142,
-              participants: 312
-            }
-          }
-        ];
-        setHackathon(sampleHackathons[0]);
+      const data = await api.getHackathon(hackathonId);
+
+      // Check if this is AgentMax and override with static details
+      if (data.title?.includes('AgentMax') || data.title?.includes('AgentMaX')) {
+        console.log('Using static AgentMax details');
+        setHackathon({ ...data, ...agentMaxDetails });
       } else {
-        // Fetch from API for real hackathons
-        const data = await api.getHackathon(hackathonId);
         setHackathon(data);
       }
+
+      // Fetch participants
+      fetchParticipants();
     } catch (error: any) {
       toast.error('Failed to load hackathon details');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchParticipants = async () => {
+    setParticipantsLoading(true);
+    try {
+      const data = await api.getHackathonParticipants(hackathonId);
+      setParticipants(data || []);
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+    } finally {
+      setParticipantsLoading(false);
     }
   };
 
@@ -229,35 +163,27 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
         return;
       }
 
-      // For sample hackathons like AgentMax, allow registration testing
-      if (hackathonId === 'agentmax-2024') {
-        setHasJoined(false); // Allow users to test registration
+      const currentUser = await api.getCurrentUser();
+
+      // CRITICAL FIX: Check if user is the organizer first
+      if (hackathon && hackathon.organizerId === currentUser.id) {
+        setHasJoined(true); // Organizers are always "joined" to their own hackathons
         setUserSubmission(null);
         return;
       }
-      
-      const currentUser = await api.getCurrentUser();
-      
-      // CRITICAL FIX: Check if user is the organizer first
-      if (hackathon && hackathon.organizerId === currentUser.id) {
-        console.log('👑 User is the organizer of this hackathon - no registration needed');
-        setHasJoined(true); // Organizers are always "joined" to their own hackathons
-        setUserSubmission(null); // Organizers don't submit to their own hackathons
-        return;
-      }
-      
+
       // Check registration status via participants API for non-organizers
       const participants = await api.getHackathonParticipants(hackathonId);
       const participant = participants.find((p: any) => p.user.id === currentUser.id);
       const isRegistered = !!participant;
       setHasJoined(isRegistered);
-      
-      console.log('🔍 Registration check:', { 
-        userId: currentUser.id, 
-        isRegistered, 
-        participantCount: participants.length 
+
+      console.log('🔍 Registration check:', {
+        userId: currentUser.id,
+        isRegistered,
+        participantCount: participants.length
       });
-      
+
       // Check if user has submission (only if registered)
       if (isRegistered) {
         try {
@@ -280,7 +206,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
 
   const handleRegister = async () => {
     if (!hackathon) return;
-    
+
     // CHECK AUTHENTICATION FIRST
     if (!isAuthenticated) {
       toast.info('Please login to register for this hackathon');
@@ -293,7 +219,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
       onClose(); // Close modal
       return;
     }
-    
+
     // Open team registration modal (don't close main modal)
     setIsTeamRegistrationOpen(true);
   };
@@ -352,7 +278,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
       {isOpen && (
         <>
           {/* Backdrop - ONLY COVERS RIGHT SIDE, LEAVES SIDEBAR VISIBLE */}
-          <div 
+          <div
             className="fixed top-0 bottom-0 bg-black/70 backdrop-blur-sm z-[9998] left-0 w-full md:left-64 md:w-auto md:right-0"
             style={{
               position: 'fixed',
@@ -367,9 +293,9 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
               }
             }}
           />
-          
+
           {/* Modal Container - MOVED TO RIGHT SIDE TO AVOID BLOCKING SIDEBAR */}
-          <div 
+          <div
             className="fixed top-0 bottom-0 z-[9999] flex items-center justify-center p-4 left-0 w-full md:left-64 md:w-auto md:right-0"
             style={{
               position: 'fixed',
@@ -386,7 +312,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-              style={{ 
+              style={{
                 pointerEvents: 'auto',
                 position: 'relative',
                 zIndex: 9999
@@ -396,611 +322,661 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
               }}
             >
               <Card className="w-full h-full bg-gradient-to-br from-slate-800/95 to-slate-900/95 border-slate-700/80 shadow-2xl modal-content flex flex-col backdrop-blur-xl">
-              {loading ? (
-                <div className="p-12 text-center flex-shrink-0">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-white">Loading hackathon details...</p>
-                </div>
-              ) : hackathon ? (
-                <>
-                  {/* Header - Fixed */}
-                  <div className="relative flex-shrink-0">
-                    {/* Banner Image */}
-                    <div className="relative h-48 sm:h-56 md:h-64 bg-gradient-to-br from-blue-500 to-purple-600">
-                      {hackathon.bannerImageUrl ? (
-                        <img
-                          src={hackathon.bannerImageUrl}
-                          alt={hackathon.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Trophy className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-white/20" />
+                {loading ? (
+                  <div className="p-12 text-center flex-shrink-0">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-white">Loading hackathon details...</p>
+                  </div>
+                ) : hackathon ? (
+                  <>
+                    {/* Header - Fixed */}
+                    <div className="relative flex-shrink-0">
+                      {/* Banner Image */}
+                      <div className="relative h-48 sm:h-56 md:h-64 bg-gradient-to-br from-blue-500 to-purple-600">
+                        {hackathon.bannerImageUrl ? (
+                          <img
+                            src={hackathon.bannerImageUrl}
+                            alt={hackathon.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Trophy className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-white/20" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
+
+                        {/* Close Button */}
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={onClose}
+                          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                        >
+                          <X className="w-5 h-5" />
+                        </Button>
+
+                        {/* Status Badge */}
+                        <div className="absolute top-4 left-4">
+                          <Badge className={getStatusColor(hackathon.status)}>
+                            {hackathon.status.replace(/_/g, ' ')}
+                          </Badge>
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
-                      
-                      {/* Close Button */}
-                      <Button
-                        type="button"
-                        size="icon"
-                        onClick={onClose}
-                        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
-                      >
-                        <X className="w-5 h-5" />
-                      </Button>
 
-                      {/* Status Badge */}
-                      <div className="absolute top-4 left-4">
-                        <Badge className={getStatusColor(hackathon.status)}>
-                          {hackathon.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-
-                      {/* Title */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 line-clamp-2">{hackathon.title}</h2>
-                        <p className="text-white text-sm sm:text-base">by {hackathon.organizer?.firstName} {hackathon.organizer?.lastName}</p>
+                        {/* Title */}
+                        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
+                          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 line-clamp-2">{hackathon.title}</h2>
+                          <p className="text-white text-sm sm:text-base">
+                            by {hackathon.title.toLowerCase().includes('agentmax') ? 'AgentMaX Team' : `${hackathon.organizer?.firstName} ${hackathon.organizer?.lastName}`}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Content - Scrollable with consistent height */}
-                  <div className="flex-1 min-h-0 bg-gradient-to-br from-slate-800/95 to-slate-900/95 flex flex-col">
-                    {/* Tabs */}
-                    <div className="flex gap-1 sm:gap-2 p-3 sm:p-4 border-b border-slate-700 bg-slate-800/60 flex-shrink-0 overflow-x-auto">
-                      <Button
-                        size="sm"
-                        onClick={() => setActiveTab('overview')}
-                        className={`whitespace-nowrap ${activeTab === 'overview' 
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
-                          : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-                      >
-                        <Info className="w-4 h-4 mr-2" />
-                        Overview
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => setActiveTab('details')}
-                        className={`whitespace-nowrap ${activeTab === 'details' 
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
-                          : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Details
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => setActiveTab('rules')}
-                        className={`whitespace-nowrap ${activeTab === 'rules' 
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
-                          : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-                      >
-                        <BookOpen className="w-4 h-4 mr-2" />
-                        Rules
-                      </Button>
-                      {hackathon.timeline && hackathon.timeline.length > 0 && (
+                    {/* Content - Scrollable with consistent height */}
+                    <div className="flex-1 min-h-0 bg-gradient-to-br from-slate-800/95 to-slate-900/95 flex flex-col">
+                      {/* Tabs */}
+                      <div className="flex gap-1 sm:gap-2 p-3 sm:p-4 border-b border-slate-700 bg-slate-800/60 flex-shrink-0 overflow-x-auto">
                         <Button
                           size="sm"
-                          onClick={() => setActiveTab('timeline')}
-                          className={`whitespace-nowrap ${activeTab === 'timeline' 
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
+                          onClick={() => setActiveTab('overview')}
+                          className={`whitespace-nowrap ${activeTab === 'overview'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
                             : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                         >
-                          <Clock className="w-4 h-4 mr-2" />
-                          Timeline
+                          <Info className="w-4 h-4 mr-2" />
+                          Overview
                         </Button>
-                      )}
-                    </div>
-
-                    {/* Tab Content - Fixed height container */}
-                    <div 
-                      className="modal-scroll-area flex-1 min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800 overflow-y-auto"
-                      style={{ 
-                        minHeight: '400px',
-                        maxHeight: 'calc(90vh - 300px)' // Consistent height across all tabs
-                      }}
-                      onWheel={(e) => {
-                        // Handle wheel events within the scroll area
-                        const element = e.currentTarget;
-                        const { scrollTop, scrollHeight, clientHeight } = element;
-                        
-                        // If we're at the top and scrolling up, or at bottom and scrolling down,
-                        // prevent the event from bubbling up
-                        if (
-                          (scrollTop === 0 && e.deltaY < 0) ||
-                          (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0)
-                        ) {
-                          e.preventDefault();
-                        }
-                        
-                        // Always stop propagation to prevent affecting background
-                        e.stopPropagation();
-                      }}
-                    >
-                      {/* Overview Tab */}
-                      {activeTab === 'overview' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-6"
+                        <Button
+                          size="sm"
+                          onClick={() => setActiveTab('details')}
+                          className={`whitespace-nowrap ${activeTab === 'details'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                            : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                         >
-                          {/* Description */}
-                          <div>
-                            <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
-                              <Zap className="w-5 h-5 text-yellow-400" />
-                              About This Hackathon
-                            </h3>
-                            <p className="text-white leading-relaxed">
-                              {hackathon.description || 'Join this exciting hackathon and showcase your skills! Build innovative solutions, collaborate with talented developers, and compete for amazing prizes.'}
-                            </p>
-                          </div>
-
-                          {/* Category and Theme */}
-                          {hackathon.category && (
-                            <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30">
-                              <h4 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                                <Target className="w-5 h-5 text-blue-400" />
-                                Theme & Category
-                              </h4>
-                              <div className="flex items-center gap-2">
-                                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
-                                  {getCategoryLabel(hackathon.category)}
-                                </Badge>
-                              </div>
-                            </Card>
-                          )}
-
-                    {/* Key Information Grid */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Trophy className="w-5 h-5 text-yellow-400" />
-                          <span className="text-white font-semibold">Prize</span>
-                        </div>
-                        <p className="text-2xl font-bold text-white">
-                          {hackathon.prizePool || (hackathon.prizeAmount 
-                            ? `${hackathon.prizeCurrency === 'USD' ? '$' : ''}${hackathon.prizeAmount.toLocaleString()}`
-                            : 'TBD')}
-                        </p>
-                      </Card>
-
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <MapPin className="w-5 h-5 text-red-400" />
-                          <span className="text-white font-semibold">Venue</span>
-                        </div>
-                        <p className="text-sm font-bold text-white">
-                          {hackathon.location || hackathon.venue || 'TBD'}
-                          {hackathon.isVirtual && ' (Virtual)'}
-                        </p>
-                      </Card>
-
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Calendar className="w-5 h-5 text-green-400" />
-                          <span className="text-white font-semibold">Start Date</span>
-                        </div>
-                        <p className="text-sm text-white font-semibold">
-                          {formatDate(hackathon.startDate)}
-                        </p>
-                      </Card>
-
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Clock className="w-5 h-5 text-blue-400" />
-                          <span className="text-white font-semibold">End Date</span>
-                        </div>
-                        <p className="text-sm text-white font-semibold">
-                          {formatDate(hackathon.endDate)}
-                        </p>
-                      </Card>
-
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <FileText className="w-5 h-5 text-red-400" />
-                          <span className="text-white font-semibold">Registration Deadline</span>
-                        </div>
-                        <p className="text-sm text-white font-semibold">
-                          {formatDate(hackathon.registrationDeadline || hackathon.registrationEnd)}
-                        </p>
-                      </Card>
-
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Users className="w-5 h-5 text-cyan-400" />
-                          <span className="text-white font-semibold">Team Size</span>
-                        </div>
-                        <p className="text-sm text-white font-semibold">
-                          {hackathon.minTeamSize}-{hackathon.maxTeamSize} people
-                          {hackathon.allowIndividual && ' (Solo allowed)'}
-                        </p>
-                      </Card>
-                    </div>
-
-                    {/* Rules & Guidelines */}
-                    {(hackathon.rules || hackathon.guidelines) && (
-                      <div className="grid md:grid-cols-2 gap-4">
-                        {hackathon.rules && (
-                          <Card className="p-4 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-2">Rules</h4>
-                            <p className="text-white text-sm whitespace-pre-line">{hackathon.rules}</p>
-                          </Card>
-                        )}
-                        {hackathon.guidelines && (
-                          <Card className="p-4 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-2">Guidelines</h4>
-                            <p className="text-white text-sm whitespace-pre-line">{hackathon.guidelines}</p>
-                          </Card>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Details
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setActiveTab('rules')}
+                          className={`whitespace-nowrap ${activeTab === 'rules'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                            : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Rules
+                        </Button>
+                        {hackathon.timeline && hackathon.timeline.length > 0 && (
+                          <Button
+                            size="sm"
+                            onClick={() => setActiveTab('timeline')}
+                            className={`whitespace-nowrap ${activeTab === 'timeline'
+                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                              : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                          >
+                            <Clock className="w-4 h-4 mr-2" />
+                            Timeline
+                          </Button>
                         )}
                       </div>
-                    )}
 
-                    {/* Requirements */}
-                    {hackathon.requirements && (
-                      <Card className="p-4 bg-slate-800/50 border-slate-700">
-                        <h4 className="text-lg font-bold text-white mb-3">Requirements</h4>
-                        <div className="text-white/80 text-sm">
-                          {typeof hackathon.requirements === 'string' ? (
-                            (() => {
-                              try {
-                                const req = JSON.parse(hackathon.requirements);
-                                return (
-                                  <div className="space-y-2">
-                                    {req.description && <p className="text-slate-300">{req.description}</p>}
-                                    {req.technologies && Array.isArray(req.technologies) && (
-                                      <div>
-                                        <p className="font-semibold mb-1 text-slate-200">Technologies:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {req.technologies.map((tech: string, i: number) => (
-                                            <Badge key={i} className="bg-blue-500/20 text-blue-400 border-blue-500/50">
-                                              {tech}
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {req.deliverables && Array.isArray(req.deliverables) && (
-                                      <div>
-                                        <p className="font-semibold mb-1 text-slate-200">Deliverables:</p>
-                                        <ul className="list-disc list-inside space-y-1">
-                                          {req.deliverables.map((del: string, i: number) => (
-                                            <li key={i}>{del}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              } catch {
-                                return <p className="text-slate-300">{hackathon.requirements}</p>;
-                              }
-                            })()
-                          ) : (
-                            <p className="text-slate-300">{JSON.stringify(hackathon.requirements)}</p>
-                          )}
-                        </div>
-                      </Card>
-                    )}
+                      {/* Tab Content - Fixed height container */}
+                      <div
+                        className="modal-scroll-area flex-1 min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800 overflow-y-auto"
+                        style={{
+                          minHeight: '400px',
+                          maxHeight: 'calc(90vh - 300px)' // Consistent height across all tabs
+                        }}
+                        onWheel={(e) => {
+                          // Handle wheel events within the scroll area
+                          const element = e.currentTarget;
+                          const { scrollTop, scrollHeight, clientHeight } = element;
 
-                          {/* Why Participate */}
-                          {hackathon.whyParticipate && (
-                            <Card className="p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
-                              <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                                <Award className="w-5 h-5 text-green-400" />
-                                Why Participate?
-                              </h4>
-                              <p className="text-white text-sm leading-relaxed whitespace-pre-line">
-                                {hackathon.whyParticipate}
+                          // If we're at the top and scrolling up, or at bottom and scrolling down,
+                          // prevent the event from bubbling up
+                          if (
+                            (scrollTop === 0 && e.deltaY < 0) ||
+                            (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0)
+                          ) {
+                            e.preventDefault();
+                          }
+
+                          // Always stop propagation to prevent affecting background
+                          e.stopPropagation();
+                        }}
+                      >
+                        {/* Overview Tab */}
+                        {activeTab === 'overview' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                          >
+                            {/* Description */}
+                            <div>
+                              <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-yellow-400" />
+                                About This Hackathon
+                              </h3>
+                              <p className="text-white leading-relaxed">
+                                {hackathon.description || 'Join this exciting hackathon and showcase your skills! Build innovative solutions, collaborate with talented developers, and compete for amazing prizes.'}
                               </p>
-                            </Card>
-                          )}
-
-                          {/* Expected Outcome */}
-                          {hackathon.expectedOutcome && (
-                            <Card className="p-5 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
-                              <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                                <Target className="w-5 h-5 text-blue-400" />
-                                Expected Outcome
-                              </h4>
-                              <p className="text-white text-sm leading-relaxed whitespace-pre-line">
-                                {hackathon.expectedOutcome}
-                              </p>
-                            </Card>
-                          )}
-                        </motion.div>
-                      )}
-
-                      {/* Details Tab */}
-                      {activeTab === 'details' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-6"
-                        >
-                          {/* Hackathon Overview */}
-                          <Card className="p-5 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <Info className="w-5 h-5 text-blue-400" />
-                              Hackathon Overview
-                            </h4>
-                            <div className="space-y-3 text-sm text-white/90">
-                              <div className="flex justify-between">
-                                <span className="text-white/70">Status:</span>
-                                <Badge className={getStatusColor(hackathon.status)}>
-                                  {hackathon.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-white/70">Category:</span>
-                                <span className="text-white">{getCategoryLabel(hackathon.category)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-white/70">Registration Fee:</span>
-                                <span className="text-white">
-                                  {hackathon.registrationFee ? `${hackathon.prizeCurrency || 'USD'} ${hackathon.registrationFee}` : 'Free'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-white/70">Virtual Event:</span>
-                                <span className="text-white">{hackathon.isVirtual ? 'Yes' : 'No'}</span>
-                              </div>
                             </div>
-                          </Card>
 
-                          {/* Requirements */}
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <Briefcase className="w-5 h-5 text-purple-400" />
-                              Requirements & Expectations
-                            </h4>
-                            <div className="text-white/90 text-sm">
-                              {hackathon.requirements ? (
-                                typeof hackathon.requirements === 'string' ? (
-                                  (() => {
-                                    try {
-                                      const req = JSON.parse(hackathon.requirements);
-                                      return (
-                                        <div className="space-y-4">
-                                          {req.description && (
-                                            <p className="leading-relaxed text-slate-300">{req.description}</p>
-                                          )}
-                                          {req.technologies && Array.isArray(req.technologies) && (
-                                            <div>
-                                              <p className="font-semibold mb-2 text-white">Technologies:</p>
-                                              <div className="flex flex-wrap gap-2">
-                                                {req.technologies.map((tech: string, i: number) => (
-                                                  <Badge key={i} className="bg-blue-500/20 text-blue-400 border-blue-500/50">
-                                                    {tech}
-                                                  </Badge>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          )}
-                                          {req.deliverables && Array.isArray(req.deliverables) && (
-                                            <div>
-                                              <p className="font-semibold mb-2 text-white">Deliverables:</p>
-                                              <ul className="list-disc list-inside space-y-2">
-                                                {req.deliverables.map((del: string, i: number) => (
-                                                  <li key={i} className="leading-relaxed">{del}</li>
-                                                ))}
-                                              </ul>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    } catch {
-                                      return <p className="leading-relaxed text-slate-300">{hackathon.requirements}</p>;
-                                    }
-                                  })()
-                                ) : (
-                                  <p className="leading-relaxed text-slate-300">{JSON.stringify(hackathon.requirements)}</p>
-                                )
-                              ) : (
-                                <div className="space-y-4">
-                                  <p className="leading-relaxed text-slate-300">
-                                    Participants are expected to build innovative solutions that demonstrate creativity, technical excellence, and practical impact.
-                                  </p>
-                                  <div>
-                                    <p className="font-semibold mb-2 text-white">Expected Deliverables:</p>
-                                    <ul className="list-disc list-inside space-y-2">
-                                      <li>Working prototype or application</li>
-                                      <li>Source code repository (GitHub recommended)</li>
-                                      <li>Project documentation and README</li>
-                                      <li>Demo video or presentation</li>
-                                      <li>Technical architecture overview</li>
-                                    </ul>
-                                  </div>
+                            {/* Category and Theme */}
+                            {hackathon.category && (
+                              <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30">
+                                <h4 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-blue-400" />
+                                  Theme & Category
+                                </h4>
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+                                    {getCategoryLabel(hackathon.category)}
+                                  </Badge>
                                 </div>
+                              </Card>
+                            )}
+
+                            {/* Key Information Grid */}
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  {hackathon.title.toLowerCase().includes('agentmax') ? (
+                                    <DollarSign className="w-5 h-5 text-emerald-400" />
+                                  ) : (
+                                    <Trophy className="w-5 h-5 text-yellow-400" />
+                                  )}
+                                  <span className="text-white font-semibold">
+                                    {hackathon.title.toLowerCase().includes('agentmax') ? 'Registration Fee' : 'Prize'}
+                                  </span>
+                                </div>
+                                <p className="text-2xl font-bold text-white">
+                                  {hackathon.title.toLowerCase().includes('agentmax')
+                                    ? '₹29,999'
+                                    : (hackathon.prizePool || (hackathon.prizeAmount
+                                      ? `${hackathon.prizeCurrency === 'INR' ? '₹' : '$'}${hackathon.prizeAmount.toLocaleString()}`
+                                      : 'TBD'))}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <MapPin className="w-5 h-5 text-red-400" />
+                                  <span className="text-white font-semibold">Venue</span>
+                                </div>
+                                <p className="text-sm font-bold text-white">
+                                  {hackathon.location || hackathon.venue || 'TBD'}
+                                  {hackathon.isVirtual && ' (Virtual)'}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Calendar className="w-5 h-5 text-green-400" />
+                                  <span className="text-white font-semibold">Start Date</span>
+                                </div>
+                                <p className="text-sm text-white font-semibold">
+                                  {formatDate(hackathon.startDate)}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Clock className="w-5 h-4 text-blue-400" />
+                                  <span className="text-white font-semibold">End Date</span>
+                                </div>
+                                <p className="text-sm text-white font-semibold">
+                                  {hackathon.title.toLowerCase().includes('agentmax') ? '30/10/2025' : formatDate(hackathon.endDate)}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <FileText className="w-5 h-5 text-red-400" />
+                                  <span className="text-white font-semibold">Registration Deadline</span>
+                                </div>
+                                <p className="text-sm text-white font-semibold">
+                                  {formatDate(hackathon.registrationDeadline || hackathon.registrationEnd)}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Users className="w-5 h-5 text-cyan-400" />
+                                  <span className="text-white font-semibold">Team Size</span>
+                                </div>
+                                <p className="text-sm text-white font-semibold">
+                                  {hackathon.minTeamSize}-{hackathon.maxTeamSize} people
+                                  {hackathon.allowIndividual && ' (Solo allowed)'}
+                                </p>
+                              </Card>
+
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Users className="w-5 h-5 text-indigo-400" />
+                                  <span className="text-white font-semibold">Participants</span>
+                                </div>
+                                {participantsLoading ? (
+                                  <div className="h-6 w-24 bg-slate-700/50 animate-pulse rounded"></div>
+                                ) : (
+                                  <div className="flex flex-col gap-1">
+                                    {hackathon?.title?.includes('AgentMax') || hackathon?.title?.includes('AgentMaX') ? (
+                                      <>
+                                        <p className="text-xl font-bold text-white">
+                                          {agentMaxDetails.stats.teamCount} Teams
+                                        </p>
+                                        <p className="text-xs text-white/70">
+                                          and {agentMaxDetails.stats.avgTeamSize} members in each team
+                                        </p>
+                                      </>
+                                    ) : teamStats.teamCount > 0 ? (
+                                      <>
+                                        <p className="text-xl font-bold text-white">
+                                          {teamStats.teamCount} Teams
+                                        </p>
+                                        <p className="text-xs text-white/70">
+                                          and {teamStats.avgMembers} members in each team
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <p className="text-2xl font-bold text-white">
+                                          {participants.length}
+                                        </p>
+                                        <p className="text-xs text-white/50">Registered Users</p>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </Card>
+
+                              {/* Rules Card - Moved here to be next to Participants */}
+                              {hackathon.rules && (
+                                <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <BookOpen className="w-5 h-5 text-indigo-400" />
+                                    <span className="text-white font-semibold">Rules</span>
+                                  </div>
+                                  <div className="max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 pr-2">
+                                    <p className="text-sm text-white/80 whitespace-pre-line">
+                                      {hackathon.rules}
+                                    </p>
+                                  </div>
+                                </Card>
                               )}
                             </div>
-                          </Card>
 
-                          {/* Judging Criteria */}
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <Award className="w-5 h-5 text-yellow-400" />
-                              Judging Criteria
-                            </h4>
-                            <div className="space-y-4">
-                              {hackathon.judgingCriteria && hackathon.judgingCriteria.length > 0 ? (
-                                hackathon.judgingCriteria.map((criteria: any, index: number) => (
-                                  <div key={index} className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white font-bold">{criteria.weight}%</span>
-                                    </div>
-                                    <div className="flex-1">
-                                      <h5 className="font-semibold text-white mb-1">{criteria.criterion}</h5>
-                                      <p className="text-sm text-white/80">{criteria.description}</p>
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                // Default judging criteria
-                                [
-                                  { criterion: 'Innovation & Creativity', weight: 25, description: 'Originality of the solution and creative approach to problem-solving' },
-                                  { criterion: 'Technical Implementation', weight: 30, description: 'Code quality, architecture, and technical excellence' },
-                                  { criterion: 'Practical Impact', weight: 25, description: 'Real-world applicability and potential for impact' },
-                                  { criterion: 'Presentation & Demo', weight: 20, description: 'Quality of presentation and demonstration of the solution' }
-                                ].map((criteria, index) => (
-                                  <div key={index} className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white font-bold">{criteria.weight}%</span>
-                                    </div>
-                                    <div className="flex-1">
-                                      <h5 className="font-semibold text-white mb-1">{criteria.criterion}</h5>
-                                      <p className="text-sm text-white/80">{criteria.description}</p>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </Card>
+                            {/* Guidelines Only (if separate) */}
+                            {hackathon.guidelines && (
+                              <div className="mt-4">
+                                <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                  <h4 className="text-lg font-bold text-white mb-2">Guidelines</h4>
+                                  <p className="text-white text-sm whitespace-pre-line">{hackathon.guidelines}</p>
+                                </Card>
+                              </div>
+                            )}
 
-                          {/* Judges */}
-                          {hackathon.judges && hackathon.judges.length > 0 && (
+                            {/* Requirements */}
+                            {hackathon.requirements && (
+                              <Card className="p-4 bg-slate-800/50 border-slate-700">
+                                <h4 className="text-lg font-bold text-white mb-3">Requirements</h4>
+                                <div className="text-white/80 text-sm">
+                                  {typeof hackathon.requirements === 'string' ? (
+                                    (() => {
+                                      try {
+                                        const req = JSON.parse(hackathon.requirements);
+                                        return (
+                                          <div className="space-y-2">
+                                            {req.description && <p className="text-slate-300">{req.description}</p>}
+                                            {req.technologies && Array.isArray(req.technologies) && (
+                                              <div>
+                                                <p className="font-semibold mb-1 text-slate-200">Technologies:</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {req.technologies.map((tech: string, i: number) => (
+                                                    <Badge key={i} className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+                                                      {tech}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {req.deliverables && Array.isArray(req.deliverables) && (
+                                              <div>
+                                                <p className="font-semibold mb-1 text-slate-200">Deliverables:</p>
+                                                <ul className="list-disc list-inside space-y-1">
+                                                  {req.deliverables.map((del: string, i: number) => (
+                                                    <li key={i}>{del}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      } catch {
+                                        return <p className="text-slate-300">{hackathon.requirements}</p>;
+                                      }
+                                    })()
+                                  ) : (
+                                    <p className="text-slate-300">{JSON.stringify(hackathon.requirements)}</p>
+                                  )}
+                                </div>
+                              </Card>
+                            )}
+
+                            {/* Why Participate */}
+                            {hackathon.whyParticipate && (
+                              <Card className="p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
+                                <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                  <Award className="w-5 h-5 text-green-400" />
+                                  Why Participate?
+                                </h4>
+                                <p className="text-white text-sm leading-relaxed whitespace-pre-line">
+                                  {hackathon.whyParticipate}
+                                </p>
+                              </Card>
+                            )}
+
+                            {/* Expected Outcome */}
+                            {hackathon.expectedOutcome && (
+                              <Card className="p-5 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+                                <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-blue-400" />
+                                  Expected Outcome
+                                </h4>
+                                <p className="text-white text-sm leading-relaxed whitespace-pre-line">
+                                  {hackathon.expectedOutcome}
+                                </p>
+                              </Card>
+                            )}
+                          </motion.div>
+                        )}
+
+                        {/* Details Tab */}
+                        {activeTab === 'details' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                          >
+                            {/* Hackathon Overview */}
+                            <Card className="p-5 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <Info className="w-5 h-5 text-blue-400" />
+                                Hackathon Overview
+                              </h4>
+                              <div className="space-y-3 text-sm text-white/90">
+                                <div className="flex justify-between">
+                                  <span className="text-white/70">Status:</span>
+                                  <Badge className={getStatusColor(hackathon.status)}>
+                                    {hackathon.status.replace('_', ' ')}
+                                  </Badge>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-white/70">Category:</span>
+                                  <span className="text-white">{getCategoryLabel(hackathon.category)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-white/70">Registration Fee:</span>
+                                  <span className="text-white font-semibold text-emerald-400">
+                                    {hackathon.title.toLowerCase().includes('agentmax') ? '₹29,999' : (hackathon.registrationFee ? `${hackathon.prizeCurrency || 'INR'} ${hackathon.registrationFee}` : 'Free')}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-white/70">Virtual Event:</span>
+                                  <span className="text-white">{hackathon.isVirtual ? 'Yes' : 'No'}</span>
+                                </div>
+                              </div>
+                            </Card>
+
+                            {/* Requirements */}
                             <Card className="p-5 bg-slate-800/50 border-slate-700">
                               <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Users className="w-5 h-5 text-cyan-400" />
-                                Judges
+                                <Briefcase className="w-5 h-5 text-purple-400" />
+                                Requirements & Expectations
+                              </h4>
+                              <div className="text-white/90 text-sm">
+                                {hackathon.requirements ? (
+                                  typeof hackathon.requirements === 'string' ? (
+                                    (() => {
+                                      try {
+                                        const req = JSON.parse(hackathon.requirements);
+                                        return (
+                                          <div className="space-y-4">
+                                            {req.description && (
+                                              <p className="leading-relaxed text-slate-300">{req.description}</p>
+                                            )}
+                                            {req.technologies && Array.isArray(req.technologies) && (
+                                              <div>
+                                                <p className="font-semibold mb-2 text-white">Technologies:</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {req.technologies.map((tech: string, i: number) => (
+                                                    <Badge key={i} className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+                                                      {tech}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {req.deliverables && Array.isArray(req.deliverables) && (
+                                              <div>
+                                                <p className="font-semibold mb-2 text-white">Deliverables:</p>
+                                                <ul className="list-disc list-inside space-y-2">
+                                                  {req.deliverables.map((del: string, i: number) => (
+                                                    <li key={i} className="leading-relaxed">{del}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      } catch {
+                                        return <p className="leading-relaxed text-slate-300">{hackathon.requirements}</p>;
+                                      }
+                                    })()
+                                  ) : (
+                                    <p className="leading-relaxed text-slate-300">{JSON.stringify(hackathon.requirements)}</p>
+                                  )
+                                ) : (
+                                  <div className="space-y-4">
+                                    <p className="leading-relaxed text-slate-300">
+                                      Participants are expected to build innovative solutions that demonstrate creativity, technical excellence, and practical impact.
+                                    </p>
+                                    <div>
+                                      <p className="font-semibold mb-2 text-white">Expected Deliverables:</p>
+                                      <ul className="list-disc list-inside space-y-2">
+                                        <li>Working prototype or application</li>
+                                        <li>Source code repository (GitHub recommended)</li>
+                                        <li>Project documentation and README</li>
+                                        <li>Demo video or presentation</li>
+                                        <li>Technical architecture overview</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+
+                            {/* Judging Criteria */}
+                            <Card className="p-5 bg-slate-800/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <Award className="w-5 h-5 text-yellow-400" />
+                                Judging Criteria
                               </h4>
                               <div className="space-y-4">
-                                {hackathon.judges.map((judge: any, index: number) => (
-                                  <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white font-bold text-lg">
-                                        {judge.name.charAt(0)}
-                                      </span>
+                                {hackathon.judgingCriteria && hackathon.judgingCriteria.length > 0 ? (
+                                  hackathon.judgingCriteria.map((criteria: any, index: number) => (
+                                    <div key={index} className="flex items-start gap-4">
+                                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white font-bold">{criteria.weight}%</span>
+                                      </div>
+                                      <div className="flex-1">
+                                        <h5 className="font-semibold text-white mb-1">{criteria.criterion}</h5>
+                                        <p className="text-sm text-white/80">{criteria.description}</p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1">
-                                      <h5 className="font-semibold text-white mb-1">{judge.name}</h5>
-                                      <p className="text-xs text-blue-400 mb-2">{judge.expertise}</p>
-                                      <p className="text-sm text-white/80 mb-2">{judge.bio}</p>
-                                      <div className="flex items-center gap-3 text-xs text-white/90">
-                                        <span className="flex items-center gap-1 text-slate-300">
-                                          <Mail className="w-3 h-3" />
-                                          {judge.email}
+                                  ))
+                                ) : (
+                                  // Default judging criteria
+                                  [
+                                    { criterion: 'Innovation & Creativity', weight: 25, description: 'Originality of the solution and creative approach to problem-solving' },
+                                    { criterion: 'Technical Implementation', weight: 30, description: 'Code quality, architecture, and technical excellence' },
+                                    { criterion: 'Practical Impact', weight: 25, description: 'Real-world applicability and potential for impact' },
+                                    { criterion: 'Presentation & Demo', weight: 20, description: 'Quality of presentation and demonstration of the solution' }
+                                  ].map((criteria, index) => (
+                                    <div key={index} className="flex items-start gap-4">
+                                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white font-bold">{criteria.weight}%</span>
+                                      </div>
+                                      <div className="flex-1">
+                                        <h5 className="font-semibold text-white mb-1">{criteria.criterion}</h5>
+                                        <p className="text-sm text-white/80">{criteria.description}</p>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </Card>
+
+                            {/* Judges */}
+                            {hackathon.judges && hackathon.judges.length > 0 && (
+                              <Card className="p-5 bg-slate-800/50 border-slate-700">
+                                <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                  <Users className="w-5 h-5 text-cyan-400" />
+                                  Judges
+                                </h4>
+                                <div className="space-y-4">
+                                  {hackathon.judges.map((judge: any, index: number) => (
+                                    <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
+                                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white font-bold text-lg">
+                                          {judge.name.charAt(0)}
                                         </span>
-                                        {judge.linkedinUrl && (
-                                          <a 
-                                            href={judge.linkedinUrl} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1 hover:text-blue-400"
-                                          >
-                                            <Globe className="w-3 h-3" />
-                                            LinkedIn
-                                          </a>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </Card>
-                          )}
-
-                          {/* Challenge Tracks */}
-                          {hackathon.tracks && hackathon.tracks.length > 0 && (
-                            <Card className="p-5 bg-slate-800/50 border-slate-700">
-                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Target className="w-5 h-5 text-green-400" />
-                                Challenge Tracks
-                              </h4>
-                              <div className="space-y-4">
-                                {hackathon.tracks.map((track: any, index: number) => (
-                                  <div key={index} className="p-4 bg-slate-900/50 rounded-lg border border-slate-600">
-                                    <div className="flex items-start gap-3">
-                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
-                                        <span className="text-white font-bold text-sm">{track.id}</span>
                                       </div>
                                       <div className="flex-1">
-                                        <h5 className="font-semibold text-white mb-2">{track.title}</h5>
-                                        <p className="text-sm text-white/80 leading-relaxed">{track.description}</p>
+                                        <h5 className="font-semibold text-white mb-1">{judge.name}</h5>
+                                        <p className="text-xs text-blue-400 mb-2">{judge.expertise}</p>
+                                        <p className="text-sm text-white/80 mb-2">{judge.bio}</p>
+                                        <div className="flex items-center gap-3 text-xs text-white/90">
+                                          <span className="flex items-center gap-1 text-slate-300">
+                                            <Mail className="w-3 h-3" />
+                                            {judge.email}
+                                          </span>
+                                          {judge.linkedinUrl && (
+                                            <a
+                                              href={judge.linkedinUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-1 hover:text-blue-400"
+                                            >
+                                              <Globe className="w-3 h-3" />
+                                              LinkedIn
+                                            </a>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </Card>
-                          )}
+                                  ))}
+                                </div>
+                              </Card>
+                            )}
 
-                          {/* Awards */}
-                          {hackathon.awards && hackathon.awards.length > 0 && (
-                            <Card className="p-5 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
-                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Trophy className="w-5 h-5 text-yellow-400" />
-                                Awards & Recognition
-                              </h4>
-                              <div className="space-y-4">
-                                {hackathon.awards.map((award: any, index: number) => (
-                                  <div key={index} className="p-4 bg-slate-900/30 rounded-lg border border-yellow-500/20">
-                                    <div className="flex items-start gap-3">
-                                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                        <Trophy className="w-5 h-5 text-white" />
-                                      </div>
-                                      <div className="flex-1">
-                                        <h5 className="font-semibold text-yellow-400 mb-2">{award.position}</h5>
-                                        <p className="text-sm text-white/90 leading-relaxed">{award.description}</p>
+                            {/* Challenge Tracks */}
+                            {hackathon.tracks && hackathon.tracks.length > 0 && (
+                              <Card className="p-5 bg-slate-800/50 border-slate-700">
+                                <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-green-400" />
+                                  Challenge Tracks
+                                </h4>
+                                <div className="space-y-4">
+                                  {hackathon.tracks.map((track: any, index: number) => (
+                                    <div key={index} className="p-4 bg-slate-900/50 rounded-lg border border-slate-600">
+                                      <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+                                          <span className="text-white font-bold text-sm">{track.id}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                          <h5 className="font-semibold text-white mb-2">{track.title}</h5>
+                                          <p className="text-sm text-white/80 leading-relaxed">{track.description}</p>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </Card>
-                          )}
+                                  ))}
+                                </div>
+                              </Card>
+                            )}
 
-                          {/* Contact Information */}
-                          {(hackathon.contactPerson || hackathon.contactEmail || hackathon.contactPhone) && (
+                            {/* Awards */}
+                            {hackathon.awards && hackathon.awards.length > 0 && (
+                              <Card className="p-5 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
+                                <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                  <Trophy className="w-5 h-5 text-yellow-400" />
+                                  Awards & Recognition
+                                </h4>
+                                <div className="space-y-4">
+                                  {hackathon.awards.map((award: any, index: number) => (
+                                    <div key={index} className="p-4 bg-slate-900/30 rounded-lg border border-yellow-500/20">
+                                      <div className="flex items-start gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                                          <Trophy className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <h5 className="font-semibold text-yellow-400 mb-2">{award.position}</h5>
+                                          <p className="text-sm text-white/90 leading-relaxed">{award.description}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </Card>
+                            )}
+
+                            {/* Contact Information */}
                             <Card className="p-5 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
                               <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                                 <Mail className="w-5 h-5 text-purple-400" />
                                 Contact Information
                               </h4>
                               <div className="space-y-3">
-                                {hackathon.contactPerson && (
-                                  <div className="flex items-center gap-3">
-                                    <Users className="w-4 h-4 text-white/90" />
-                                    <span className="text-white">{hackathon.contactPerson}</span>
-                                  </div>
-                                )}
-                                {hackathon.contactEmail && (
-                                  <div className="flex items-center gap-3">
-                                    <Mail className="w-4 h-4 text-white/90" />
-                                    <a href={`mailto:${hackathon.contactEmail}`} className="text-blue-400 hover:text-blue-300">
-                                      {hackathon.contactEmail}
-                                    </a>
-                                  </div>
-                                )}
-                                {hackathon.contactPhone && (
-                                  <div className="flex items-center gap-3">
-                                    <Phone className="w-4 h-4 text-white/90" />
-                                    <a href={`tel:${hackathon.contactPhone}`} className="text-blue-400 hover:text-blue-300">
-                                      {hackathon.contactPhone}
-                                    </a>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-3">
+                                  <Users className="w-4 h-4 text-white/90" />
+                                  <span className="text-white">
+                                    {hackathon.title.toLowerCase().includes('agentmax') ? 'AgentMaX Team' : (hackathon.contactPerson || 'Organizer')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Mail className="w-4 h-4 text-white/90" />
+                                  <a href={`mailto:${hackathon.title.toLowerCase().includes('agentmax') ? 'hackathon@agentmax.in' : hackathon.contactEmail}`} className="text-blue-400 hover:text-blue-300">
+                                    {hackathon.title.toLowerCase().includes('agentmax') ? 'hackathon@agentmax.in' : (hackathon.contactEmail || 'N/A')}
+                                  </a>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Phone className="w-4 h-4 text-white/90" />
+                                  <a href={`tel:${hackathon.title.toLowerCase().includes('agentmax') ? '+91-89512-80606' : hackathon.contactPhone}`} className="text-blue-400 hover:text-blue-300">
+                                    {hackathon.title.toLowerCase().includes('agentmax') ? '+91-89512-80606' : (hackathon.contactPhone || 'N/A')}
+                                  </a>
+                                </div>
                               </div>
                             </Card>
-                          )}
-                        </motion.div>
-                      )}
+                          </motion.div>
+                        )}
 
-                      {/* Rules Tab */}
-                      {activeTab === 'rules' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-6"
-                        >
-                          {/* Rules */}
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <BookOpen className="w-5 h-5 text-red-400" />
-                              Rules
-                            </h4>
-                            <p className="text-white text-sm whitespace-pre-line leading-relaxed">
-                              {hackathon.rules || `• Teams must register before the deadline
+                        {/* Rules Tab */}
+                        {activeTab === 'rules' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                          >
+                            {/* Rules */}
+                            <Card className="p-5 bg-slate-800/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <BookOpen className="w-5 h-5 text-red-400" />
+                                Rules
+                              </h4>
+                              <p className="text-white text-sm whitespace-pre-line leading-relaxed">
+                                {hackathon.rules || `• Teams must register before the deadline
 • All team members must be registered participants
 • Projects must be built during the hackathon period
 • Use of existing code libraries is allowed but must be declared
@@ -1008,17 +984,17 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
 • Follow fair play guidelines and respect intellectual property
 • Judges' decisions are final
 • By participating, you agree to the terms and conditions`}
-                            </p>
-                          </Card>
+                              </p>
+                            </Card>
 
-                          {/* Guidelines */}
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <FileText className="w-5 h-5 text-blue-400" />
-                              Guidelines
-                            </h4>
-                            <p className="text-white text-sm whitespace-pre-line leading-relaxed">
-                              {hackathon.guidelines || `• Focus on innovation and creativity
+                            {/* Guidelines */}
+                            <Card className="p-5 bg-slate-800/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-blue-400" />
+                                Guidelines
+                              </h4>
+                              <p className="text-white text-sm whitespace-pre-line leading-relaxed">
+                                {hackathon.guidelines || `• Focus on innovation and creativity
 • Build solutions that solve real-world problems
 • Ensure your project is scalable and practical
 • Provide clear documentation and demo videos
@@ -1026,75 +1002,83 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
 • Collaborate effectively with your team members
 • Make use of available mentorship and resources
 • Have fun and learn something new!`}
-                            </p>
-                          </Card>
+                              </p>
+                            </Card>
 
-                          {/* Terms and Conditions */}
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                              <AlertCircle className="w-5 h-5 text-yellow-400" />
-                              Terms & Conditions
-                            </h4>
-                            <p className="text-white text-sm whitespace-pre-line leading-relaxed">
-                              {hackathon.termsAndConditions || `• Participation is subject to registration and approval
+                            {/* Terms and Conditions */}
+                            <Card className="p-5 bg-slate-800/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-yellow-400" />
+                                Terms & Conditions
+                              </h4>
+                              <p className="text-white text-sm whitespace-pre-line leading-relaxed">
+                                {hackathon.title.toLowerCase().includes('agentmax') ?
+                                  `• All payments made through the payment gateway are final and non-cancellable. Once a transaction is successfully processed, no cancellation requests will be entertained.
+• Failure to attend, participate or utilise the services for which payment has been made (“no-show”) shall not entitle the user to a refund, either in full or in part.
+• A paid registration may be transferred to another individual within the same organisation, provided that - The transfer request is submitted before the official commencement of the hackathon.
+• Verified duplicate debits will be refunded as per banking/payment processor timelines(If Any).
+• The organisers reserve the right, at their sole discretion, to cancel, postpone or reschedule the event. In such cases, participants will be notified, and the applicable refund or transfer policy will be communicated.
+• The decision of the organisers regarding cancellations, refunds or transfers shall be final and binding.
+• No refund or compensation shall be provided in the event of cancellation or disruption caused by circumstances beyond the control of the organisers, including but not limited to natural disasters, acts of government, network outages or other force majeure events.`
+                                  : (hackathon.termsAndConditions || `• Participation is subject to registration and approval
 • All submissions become part of the hackathon showcase
 • Participants retain ownership of their intellectual property
 • Organizers may use submissions for promotional purposes
 • Code of conduct must be followed at all times
 • Violation of rules may result in disqualification
 • Prizes are awarded at the discretion of the judges
-• By participating, you agree to these terms and conditions`}
-                            </p>
-                          </Card>
-                        </motion.div>
-                      )}
+• By participating, you agree to these terms and conditions`)}
+                              </p>
+                            </Card>
+                          </motion.div>
+                        )}
 
-                      {/* Timeline Tab */}
-                      {activeTab === 'timeline' && hackathon.timeline && hackathon.timeline.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-6"
-                        >
-                          <Card className="p-5 bg-slate-800/50 border-slate-700">
-                            <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                              <Clock className="w-5 h-5 text-green-400" />
-                              Event Timeline
-                            </h4>
-                            <div className="space-y-6">
-                              {hackathon.timeline.map((phase: any, index: number) => (
-                                <div key={index} className="flex gap-4">
-                                  <div className="flex flex-col items-center">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white font-bold">{index + 1}</span>
+                        {/* Timeline Tab */}
+                        {activeTab === 'timeline' && hackathon.timeline && hackathon.timeline.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                          >
+                            <Card className="p-5 bg-slate-800/50 border-slate-700">
+                              <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                                <Clock className="w-5 h-5 text-green-400" />
+                                Event Timeline
+                              </h4>
+                              <div className="space-y-6">
+                                {hackathon.timeline.map((phase: any, index: number) => (
+                                  <div key={index} className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white font-bold">{index + 1}</span>
+                                      </div>
+                                      {index < hackathon.timeline.length - 1 && (
+                                        <div className="w-0.5 h-full bg-gradient-to-b from-blue-500 to-purple-500 mt-2"></div>
+                                      )}
                                     </div>
-                                    {index < hackathon.timeline.length - 1 && (
-                                      <div className="w-0.5 h-full bg-gradient-to-b from-blue-500 to-purple-500 mt-2"></div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 pb-6">
-                                    <h5 className="font-semibold text-white mb-2">{phase.phase}</h5>
-                                    <p className="text-sm text-white/80 mb-3">{phase.description}</p>
-                                    <div className="flex items-center gap-4 text-xs text-white/90">
-                                      <span className="flex items-center gap-1 text-slate-300">
-                                        <Calendar className="w-3 h-3" />
-                                        {formatDate(phase.startDate)}
-                                      </span>
-                                      <span className="text-slate-300">→</span>
-                                      <span className="flex items-center gap-1 text-slate-300">
-                                        <Clock className="w-3 h-3" />
-                                        {formatDate(phase.endDate)}
-                                      </span>
+                                    <div className="flex-1 pb-6">
+                                      <h5 className="font-semibold text-white mb-2">{phase.phase}</h5>
+                                      <p className="text-sm text-white/80 mb-3">{phase.description}</p>
+                                      <div className="flex items-center gap-4 text-xs text-white/90">
+                                        <span className="flex items-center gap-1 text-slate-300">
+                                          <Calendar className="w-3 h-3" />
+                                          {formatDate(phase.startDate)}
+                                        </span>
+                                        <span className="text-slate-300">→</span>
+                                        <span className="flex items-center gap-1 text-slate-300">
+                                          <Clock className="w-3 h-3" />
+                                          {formatDate(phase.endDate)}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          </Card>
-                        </motion.div>
-                      )}
+                                ))}
+                              </div>
+                            </Card>
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                     {/* Action Buttons - Fixed at bottom with responsive layout */}
                     <div className="flex flex-col sm:flex-row gap-3 p-4 sm:p-6 pt-4 border-t border-slate-700 flex-shrink-0 bg-slate-900/50">
@@ -1102,7 +1086,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                       {userRole === 'organizer' && hackathon && (() => {
                         const currentUser = JSON.parse(localStorage.getItem('user_data') || '{}');
                         const isOwner = hackathon.organizerId === currentUser.id;
-                        
+
                         if (isOwner) {
                           // Owner of the hackathon
                           return (
@@ -1133,7 +1117,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                           return null; // Will fall through to participant logic below
                         }
                       })()}
-                      
+
                       {/* Participant buttons - show for non-organizers OR organizers viewing other hackathons */}
                       {(userRole !== 'organizer' || (hackathon && hackathon.organizerId !== JSON.parse(localStorage.getItem('user_data') || '{}').id)) && hackathon && (() => {
                         const now = new Date();
@@ -1141,9 +1125,9 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                         const submissionEnd = new Date(hackathon.submissionDeadline);
                         const isSubmissionWindowOpen = now >= submissionStart && now <= submissionEnd;
                         const isSubmissionLocked = now > submissionEnd;
-                        
-                        if (!hasJoined && hackathon.status !== 'COMPLETED') {
-                          // NOT REGISTERED - Show Register button (only if not completed)
+
+                        if (!hasJoined && hackathon.status === 'LIVE' && !hackathon.title.toLowerCase().includes('agentmax')) {
+                          // NOT REGISTERED - Show Register button (only if LIVE and NOT AgentMaX)
                           return (
                             <Button
                               className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold"
@@ -1163,6 +1147,9 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                               )}
                             </Button>
                           );
+                        } else if (hackathon.title.toLowerCase().includes('agentmax')) {
+                          // AgentMaX specific: no register button (ended)
+                          return null;
                         } else if (hackathon.status === 'COMPLETED') {
                           // COMPLETED HACKATHON - Show View Results button
                           return (
@@ -1191,10 +1178,8 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                             <Button
                               className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold"
                               onClick={() => {
-                                if (onJoin) {
-                                  onJoin(hackathon.id, undefined);
-                                }
-                                onClose();
+                                console.log("SUBMIT PROJECT CLICKED", hackathon.id);
+                                navigate(`/submit/${hackathon.id}`);
                               }}
                             >
                               <FileText className="w-5 h-5 mr-2" />
@@ -1250,10 +1235,8 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                             <Button
                               className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold"
                               onClick={() => {
-                                if (onJoin) {
-                                  onJoin(hackathon.id, undefined);
-                                }
-                                onClose();
+                                console.log("SUBMIT PROJECT CLICKED", hackathon.id);
+                                navigate(`/submit/${hackathon.id}`);
                               }}
                             >
                               <FileText className="w-5 h-5 mr-2" />
@@ -1262,7 +1245,7 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                           );
                         }
                       })()}
-                      
+
                       <Button
                         type="button"
                         className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
@@ -1297,19 +1280,19 @@ export function HackathonDetailsModal({ hackathonId, isOpen, onClose, onJoin, on
                         </p>
                       </div>
                     )}
-                </>
-              ) : (
-                <div className="p-12 text-center">
-                  <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                  <p className="text-white">Failed to load hackathon details</p>
-                  <Button
-                    className="mt-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
-                    onClick={onClose}
-                  >
-                    Close
-                  </Button>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <div className="p-12 text-center">
+                    <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                    <p className="text-white">Failed to load hackathon details</p>
+                    <Button
+                      className="mt-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold"
+                      onClick={onClose}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                )}
               </Card>
             </motion.div>
           </div>

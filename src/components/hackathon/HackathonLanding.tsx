@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, Brain, Zap, Globe, Code, Award, ChevronRight, Sparkles, Rocket, Trophy, Users } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { Branding } from './Branding';
 import { Card3D } from '../ui/Card3D';
 import { Button3D } from '../ui/Button3D';
 import { Scene3D, FloatingCube, FloatingSphere } from '../ui/Scene3D';
@@ -45,19 +46,19 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
       try {
         setStatsLoading(true);
         console.log('🔄 Fetching platform stats...');
-        
+
         // Use the dedicated platform stats endpoint
         const platformStats = await api.getPlatformStats();
-        
+
         // Update stats with real data
         setStats([
           { label: 'Active Hackathons', value: platformStats.activeHackathons.toString(), icon: Trophy },
           { label: 'Participants', value: platformStats.totalParticipants.toString(), icon: Users },
           { label: 'Projects Submitted', value: platformStats.totalSubmissions.toString(), icon: Code },
         ]);
-        
+
         console.log('✅ Platform stats updated:', platformStats);
-        
+
       } catch (error) {
         console.error('❌ Error fetching platform stats:', error);
         // Show fallback attractive numbers on error
@@ -72,13 +73,13 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
     };
 
     fetchStats();
-    
+
     // Subscribe to global stats refresh events
     const unsubscribe = api.onStatsRefresh(fetchStats);
-    
+
     // Set up periodic refresh every 60 seconds to catch updates
     const interval = setInterval(fetchStats, 60000);
-    
+
     return () => {
       clearInterval(interval);
       unsubscribe();
@@ -114,27 +115,20 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
       {/* Navigation */}
-      <motion.nav 
+      <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         className="fixed top-0 w-full z-50 backdrop-blur-xl bg-slate-950/50 border-b border-slate-800/50"
       >
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <motion.div 
-              className="flex items-center gap-2"
-              whileHover={{ scale: 1.05 }}
+            <motion.div
+              className="flex items-center"
+              whileHover={{ scale: 1.02 }}
+              onClick={() => onNavigate('landing')}
+              style={{ cursor: 'pointer' }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  AIrena
-                </span>
-                <span className="text-xs text-white/90 -mt-1">The Global Arena for AI Builders</span>
-                <span className="text-xs text-white font-medium mt-0.5">by 3AI and SashAI</span>
-              </div>
+              <Branding size="lg" />
             </motion.div>
           </div>
 
@@ -156,7 +150,7 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
               <FloatingSphere position={[-2, -3, -2]} color="#10b981" />
             </Scene3D>
           </Suspense>
-          
+
           {/* Animated gradient orbs */}
           <motion.div
             animate={{
@@ -234,15 +228,15 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
               transition={{ delay: 0.6, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
-              <Button3D 
-                size="lg" 
+              <Button3D
+                size="lg"
                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold text-lg px-8 py-6"
                 onClick={() => onNavigate('explore')}
               >
                 Explore Hackathon <ChevronRight className="w-5 h-5 ml-2" />
               </Button3D>
-              <Button3D 
-                size="lg" 
+              <Button3D
+                size="lg"
                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-semibold text-lg px-8 py-6"
                 onClick={() => onNavigate('organizer-auth')}
               >
@@ -476,18 +470,18 @@ export function HackathonLanding({ onNavigate }: HackathonLandingProps) {
           <p className="mt-1 text-xs text-white/80">The Global Arena for AI Builders</p>
           <p className="mt-2 text-xs text-white/80">
             Powered by{' '}
-            <a 
-              href="https://www.sashai.tech/" 
-              target="_blank" 
+            <a
+              href="https://www.sashai.tech/"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 underline transition-colors"
             >
               SashAI
             </a>
             {' '}&{' '}
-            <a 
-              href="https://3ai.in/" 
-              target="_blank" 
+            <a
+              href="https://3ai.in/"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 underline transition-colors"
             >

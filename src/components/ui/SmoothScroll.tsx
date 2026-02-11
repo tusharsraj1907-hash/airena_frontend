@@ -16,12 +16,12 @@ interface SmoothScrollProps {
 export function SmoothScroll({ children, options }: SmoothScrollProps) {
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 0.8, // Reduced from 1.2 for faster, more responsive scrolling
+      duration: 0.8,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smooth: true,
       smoothTouch: false,
       touchMultiplier: 2,
-      wheelMultiplier: 0.5, // Reduced scroll distance per wheel event
+      wheelMultiplier: 0.5,
       ...options,
     });
 
@@ -32,46 +32,63 @@ export function SmoothScroll({ children, options }: SmoothScrollProps) {
 
     requestAnimationFrame(raf);
 
-    // Intercept wheel events to allow scrollable containers to handle their own scroll
-    // This runs in capture phase BEFORE Lenis's handlers
+    /**
+     * ✅ CRITICAL FIX:
+     * Use event.composedPath() instead of target.closest()
+     * This allows scrolling ANYWHERE inside the container,
+     * not just when hovering the scrollbar.
+     */
     const handleWheelCapture = (e: WheelEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target) return;
-      
-      // Check if the event is over a scrollable container
-      const scrollableContainer = target.closest('[data-scrollable]') || 
-                                   target.closest('.overflow-y-auto') ||
-                                   target.closest('.overflow-auto');
-      
+      const path = e.composedPath() as HTMLElement[];
+
+      const scrollableContainer = path.find((el) => {
+        if (!(el instanceof HTMLElement)) return false;
+
+        if (
+          el.dataset?.nativeScroll === 'true' ||
+          el.dataset?.scrollable === 'true' ||
+          el.classList?.contains('overflow-y-auto') ||
+          el.classList?.contains('overflow-auto')
+        ) {
+          return el.scrollHeight > el.clientHeight;
+        }
+
+        return false;
+      });
+
       if (scrollableContainer) {
         const container = scrollableContainer as HTMLElement;
-        const isScrollable = container.scrollHeight > container.clientHeight;
-        
-        if (isScrollable) {
-          const isAtTop = container.scrollTop <= 0;
-          const isAtBottom = container.scrollTop >= container.scrollHeight - container.clientHeight - 1;
-          
-          // If container can scroll and is not at boundaries, prevent Lenis from handling it
-          if (!(isAtTop && e.deltaY < 0) && !(isAtBottom && e.deltaY > 0)) {
-            // Stop propagation to prevent Lenis from intercepting
-            e.stopPropagation();
-            // Don't preventDefault - let browser handle native scroll
-            return;
-          }
+
+        const isAtTop = container.scrollTop <= 0;
+        const isAtBottom =
+          container.scrollTop + container.clientHeight >=
+          container.scrollHeight - 1;
+
+        // Allow native scrolling INSIDE container
+        if (
+          !(isAtTop && e.deltaY < 0) &&
+          !(isAtBottom && e.deltaY > 0)
+        ) {
+          e.stopPropagation(); // block Lenis
+          return;
         }
       }
     };
 
-    // Use capture phase to intercept BEFORE Lenis's handlers
-    // Non-passive allows us to stop propagation
-    document.addEventListener('wheel', handleWheelCapture, { passive: false, capture: true });
+    document.addEventListener('wheel', handleWheelCapture, {
+      passive: false,
+      capture: true,
+    });
 
     return () => {
       lenis.destroy();
-      document.removeEventListener('wheel', handleWheelCapture, { capture: true } as EventListenerOptions);
+      document.removeEventListener(
+        'wheel',
+        handleWheelCapture,
+        { capture: true } as EventListenerOptions
+      );
     };
   }, [options]);
 
   return <>{children}</>;
 }
-

@@ -73,7 +73,7 @@ export default defineConfig({
       '/api': {
         target: process.env.NODE_ENV === 'production' 
           ? 'https://your-backend-url.vercel.app' 
-          : 'http://127.0.0.1:3002',
+          : 'http://localhost:3002',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,

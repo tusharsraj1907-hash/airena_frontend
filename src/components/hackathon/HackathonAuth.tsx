@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Mail, Lock, User, ArrowRight, Github, Chrome, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
+import { Branding } from './Branding';
 import { api } from '../../utils/api';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface HackathonAuthProps {
   onAuthSuccess: (userData: any) => void;
@@ -14,6 +16,7 @@ interface HackathonAuthProps {
 }
 
 export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -29,10 +32,28 @@ export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
 
     try {
       if (isLogin) {
-        // Login - go directly to dashboard
-        const response = await api.login(formData.email, formData.password);
-        api.setToken(response.accessToken);
-        onAuthSuccess({
+        // LOGIN FLOW
+        console.log('🔄 HackathonAuth: Starting login...');
+        const response = await api.login(formData.email, formData.password) as any;
+
+        if (response.requiresOtp) {
+          console.log('🔄 HackathonAuth: OTP required, navigating to /verify-email');
+          navigate('/verify-email', {
+            state: {
+              email: response.email || formData.email,
+              isLogin: true
+            },
+            replace: true
+          });
+          toast.info(response.message || 'Please verify your email to log in.');
+          return;
+        }
+
+        if (!response.user) {
+          throw new Error('Invalid response from server');
+        }
+
+        const userData = {
           id: response.user.id,
           name: `${response.user.firstName} ${response.user.lastName}`,
           firstName: response.user.firstName,
@@ -40,22 +61,44 @@ export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
           email: response.user.email,
           role: response.user.role.toLowerCase(),
           status: response.user.status,
-          isNewUser: false, // Existing user logging in
-        });
-        toast.success('Login successful!');
+          emailVerified: response.user.emailVerified,
+          isNewUser: false,
+        };
+
+        console.log('✅ HackathonAuth: Login successful, userData:', userData);
+
+        if (userData.emailVerified) {
+          // User is verified - set token and authenticate
+          api.setToken(response.accessToken);
+          onAuthSuccess(userData);
+          toast.success('Login successful!');
+        } else {
+          // User needs verification - navigate to verify-email route
+          console.log('🔄 HackathonAuth: User needs verification, navigating to /verify-email');
+          navigate('/verify-email', {
+            state: {
+              email: userData.email,
+              tempToken: response.accessToken, // Token provided for verification
+              userData: userData
+            },
+            replace: true
+          });
+        }
       } else {
-        // Register - go directly to dashboard
+        // SIGNUP FLOW
+        console.log('🔄 HackathonAuth: Starting signup...');
         const [firstName, ...lastNameParts] = formData.firstName.split(' ');
         const lastName = lastNameParts.join(' ') || formData.lastName || '';
-        
+
         const response = await api.register({
           email: formData.email,
           password: formData.password,
           firstName: firstName || formData.firstName,
           lastName: lastName,
         });
-        api.setToken(response.accessToken);
-        onAuthSuccess({
+
+        // New users are ALWAYS unverified - navigate to verify-email route
+        const userData = {
           id: response.user.id,
           name: `${response.user.firstName} ${response.user.lastName}`,
           firstName: response.user.firstName,
@@ -63,13 +106,30 @@ export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
           email: response.user.email,
           role: response.user.role.toLowerCase(),
           status: response.user.status,
-          isNewUser: true, // New user registration
+          emailVerified: false, // New users are ALWAYS unverified
+          isNewUser: true,
+        };
+
+        console.log('✅ HackathonAuth: Signup successful, navigating to /verify-email');
+        navigate('/verify-email', {
+          state: {
+            email: userData.email,
+            tempToken: response.accessToken,
+            userData: userData
+          },
+          replace: true
         });
-        toast.success('Account created successfully!');
+        toast.success('Account created! Please verify your email.');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed. Please try again.');
-      console.error('Auth error:', error);
+      console.error('❌ HackathonAuth: Auth failed:', error);
+
+      // Handle specific host approval error
+      if (error.message && error.message.includes('pending admin approval')) {
+        toast.error('Your host account is pending admin approval. Please wait for approval before logging in.');
+      } else {
+        toast.error(error.message || 'Authentication failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,15 +172,9 @@ export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <button onClick={onBack} className="inline-flex items-center gap-2 mb-6 hover:opacity-80 transition-opacity">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-7 h-7" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              AIrena
-            </span>
+          <button onClick={onBack} className="inline-flex items-center hover:opacity-80 transition-opacity">
+            <Branding size="lg" />
           </button>
-          <p className="text-white">Join the future of hackathons</p>
         </motion.div>
 
         {/* Auth Card */}
@@ -134,17 +188,15 @@ export function HackathonAuth({ onAuthSuccess, onBack }: HackathonAuthProps) {
             <div className="flex gap-2 mb-8 p-1 bg-slate-800/50 rounded-lg">
               <button
                 onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2 rounded-md transition-all font-semibold ${
-                  isLogin ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white' : 'hover:bg-slate-800 text-white'
-                }`}
+                className={`flex-1 py-2 rounded-md transition-all font-semibold ${isLogin ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white' : 'hover:bg-slate-800 text-white'
+                  }`}
               >
                 Login
               </button>
               <button
                 onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2 rounded-md transition-all font-semibold ${
-                  !isLogin ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white' : 'hover:bg-slate-800 text-white'
-                }`}
+                className={`flex-1 py-2 rounded-md transition-all font-semibold ${!isLogin ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white' : 'hover:bg-slate-800 text-white'
+                  }`}
               >
                 Sign Up
               </button>

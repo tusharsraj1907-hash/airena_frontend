@@ -76,13 +76,13 @@ class ApiService {
           }
           throw new Error(errorMsg);
         }
-        
+
         // Handle 403 Forbidden - insufficient permissions
         if (response.status === 403) {
           const error = await response.json().catch(() => ({ message: 'Forbidden resource' }));
           throw new Error(error.message || 'You do not have permission to perform this action.');
         }
-        
+
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || `HTTP error! status: ${response.status}`);
       }
@@ -116,14 +116,33 @@ class ApiService {
   }
 
   async getCurrentUser() {
-    return this.request<{ id: string; email: string; firstName: string; lastName: string; role: string; status: string }>('/auth/me');
+    return this.request<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      status: string;
+      hostOnboarded?: boolean;
+      organizationName?: string;
+      phoneNumber?: string;
+      experienceLevel?: string;
+      bio?: string;
+    }>('/auth/me');
   }
 
-  async updateProfile(data: { role?: string }) {
+  async updateProfile(data: {
+    role?: string;
+    organizationName?: string;
+    phoneNumber?: string;
+    experienceLevel?: string;
+    bio?: string;
+    hostOnboarded?: boolean;
+  }) {
     console.log('🔄 API: updateProfile called with:', data);
     console.log('🔑 API: Current token:', this.token ? 'EXISTS' : 'MISSING');
     console.log('🔑 API: Token from localStorage:', localStorage.getItem('auth_token') ? 'EXISTS' : 'MISSING');
-    
+
     try {
       const result = await this.request<any>('/auth/profile', {
         method: 'PATCH',
@@ -137,13 +156,41 @@ class ApiService {
     }
   }
 
+  // Email verification endpoints
+  async sendOtp() {
+    return this.request<{ message: string }>('/auth/send-otp', {
+      method: 'POST',
+    });
+  }
+
+  async verifyEmail(otp: string) {
+    return this.request<{ message: string } | { accessToken: string; user: any }>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ otp }),
+    });
+  }
+
+  async verifyEmailPublic(email: string, otp: string) {
+    return this.request<{ message: string; user?: any }>('/auth/verify-email-public', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  }
+
+  async verifyLoginOtp(email: string, otp: string) {
+    return this.request<{ accessToken: string; user: any }>('/auth/verify-login-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  }
+
   // Hackathon endpoints
   async getHackathons(filters?: { status?: string; category?: string; search?: string }) {
     const params = new URLSearchParams();
     if (filters?.status) params.append('status', filters.status);
     if (filters?.category) params.append('category', filters.category);
     if (filters?.search) params.append('search', filters.search);
-    
+
     const query = params.toString();
     return this.request<any[]>(`/hackathons${query ? `?${query}` : ''}`);
   }
@@ -176,6 +223,8 @@ class ApiService {
       teamDescription?: string;
       selectedTrack?: number;
       teamMembers?: Array<{ name: string; email: string; role: string }>;
+      paymentId?: string;
+      providerPaymentId?: string;
     }
   ) {
     return this.request<{ success: boolean; message: string }>(`/hackathons/${hackathonId}/register`, {
@@ -223,7 +272,7 @@ class ApiService {
 
   // Global stats refresh event - can be called after important actions
   private statsRefreshCallbacks: (() => void)[] = [];
-  
+
   onStatsRefresh(callback: () => void) {
     this.statsRefreshCallbacks.push(callback);
     return () => {
@@ -233,7 +282,7 @@ class ApiService {
       }
     };
   }
-  
+
   triggerStatsRefresh() {
     console.log('🔄 Triggering global stats refresh...');
     this.statsRefreshCallbacks.forEach(callback => callback());
@@ -247,7 +296,7 @@ class ApiService {
     if (filters?.teamId) params.append('teamId', filters.teamId);
     if (filters?.status) params.append('status', filters.status);
     if (filters?.isDraft !== undefined) params.append('isDraft', filters.isDraft.toString());
-    
+
     const query = params.toString();
     return this.request<any[]>(`/submissions${query ? `?${query}` : ''}`);
   }
@@ -409,6 +458,67 @@ class ApiService {
 
   async getTeam(id: string) {
     return this.request<any>(`/teams/${id}`);
+  }
+
+  // Admin endpoints
+  async getAdminHostRequests() {
+    return this.request<any[]>('/admin/host-requests');
+  }
+
+  async getAdminHosts() {
+    return this.request<any[]>('/admin/hosts');
+  }
+
+  async getAdminParticipants() {
+    return this.request<any[]>('/admin/participants');
+  }
+
+  async approveHost(userId: string) {
+    return this.request<any>(`/admin/approve-host/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectHost(userId: string) {
+    return this.request<any>(`/admin/reject-host/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return this.request<{ message: string }>(`/admin/users/${userId}/delete`, {
+      method: 'POST',
+    });
+  }
+
+  async getSystemConfig(key: string) {
+    return this.request<{ key: string; value: string; description?: string }>(`/admin/config/${key}`);
+  }
+
+  async updateSystemConfig(key: string, value: string, description?: string) {
+    return this.request<any>('/admin/config', {
+      method: 'POST',
+      body: JSON.stringify({ key, value, description }),
+    });
+  }
+
+  // Payment endpoints
+  async createPaymentOrder() {
+    return this.request<{
+      paymentId: string;
+      amount: number;
+      currency: string;
+      invoiceId: string;
+      mockOrderId: string;
+    }>('/payments/create-order', {
+      method: 'POST',
+    });
+  }
+
+  async getPaymentHistory() {
+    return this.request<any[]>('/payments/history', {
+      method: 'GET',
+    });
   }
 }
 

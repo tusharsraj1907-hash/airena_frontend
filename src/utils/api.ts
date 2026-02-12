@@ -2,11 +2,11 @@
 // Dynamic API URL based on environment
 const getApiBaseUrl = () => {
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL; // MUST come from Vercel env
+    return import.meta.env.VITE_API_URL || 'https://airena-backend-2.onrender.com/api/v1';
   }
-  // In local dev, use Vite proxy
   return '/api/v1';
 };
+
 
 
 const API_BASE_URL = getApiBaseUrl();

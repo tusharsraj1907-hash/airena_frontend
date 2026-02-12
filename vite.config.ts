@@ -70,14 +70,14 @@ export default defineConfig({
     strictPort: false,
     open: false,
     proxy: {
-      '/api': {
-        target: process.env.NODE_ENV === 'production' 
-          ? 'https://airena-backend-2.onrender.com'
-          : 'http://localhost:3002',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path,
-      },
-    },
+  '/api': {
+    target: process.env.NODE_ENV === 'production'
+      ? 'https://airena-backend-2.onrender.com'
+      : 'http://localhost:3002',
+    changeOrigin: true,
+    secure: false,
+    rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+  },
+},
   },
 });

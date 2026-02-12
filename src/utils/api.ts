@@ -1,13 +1,13 @@
 // API Configuration and Service
 // Dynamic API URL based on environment
 const getApiBaseUrl = () => {
-  // In production, use the environment variable or fallback to relative path
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL || '/api/v1';
+    return import.meta.env.VITE_API_URL; // MUST come from Vercel env
   }
-  // In development, use the proxy
+  // In local dev, use Vite proxy
   return '/api/v1';
 };
+
 
 const API_BASE_URL = getApiBaseUrl();
 

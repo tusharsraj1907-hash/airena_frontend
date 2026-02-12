@@ -1,11 +1,9 @@
 // API Configuration and Service
 // Dynamic API URL based on environment
 const getApiBaseUrl = () => {
-  if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL || 'https://airena-backend-2.onrender.com/api/v1';
-  }
-  return '/api/v1';
+  return "https://airena-backend-2.onrender.com/api/v1";
 };
+
 
 
 

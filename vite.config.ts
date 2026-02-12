@@ -72,7 +72,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.NODE_ENV === 'production' 
-          ? 'https://your-backend-url.vercel.app' 
+          ? 'https://airena-backend-2.onrender.com'
           : 'http://localhost:3002',
         changeOrigin: true,
         secure: false,
